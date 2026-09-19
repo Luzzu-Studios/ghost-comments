@@ -1,0 +1,16 @@
+.git/**
+.gitignore
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+src/**
+test/**
+node_modules/**
+out/**
+*.map
+*.vsix
+esbuild.mjs
+eslint.config.mjs
+tsconfig.json
+README (1).md
+design-assets/**

@@ -1,185 +1,99 @@
-# Commenter Development Guide
+# Ghost Comments
 
-This document explains how Commenter is structured, built, activated, and tested.
+Ghost Comments attaches durable, repository-shared notes to code without placing comment text in source files.
 
-## Entry Points
+## Use
 
-Commenter has a source entry point and a packaged runtime entry point:
+1. Select code, or leave the cursor on a line to annotate the full line.
+2. Press `Cmd+Alt+N` on macOS or `Ctrl+Alt+N` on Windows and Linux.
+3. Enter a multiline Markdown note in the native VS Code comment editor and choose **Save Note**.
 
-- Source: [`src/extension.ts`](../src/extension.ts)
-- Runtime bundle: `dist/extension.js`
+The first note prompts for an author name. Change it later with the `Ghost Comments: Author Name` setting. Existing notes retain their original author.
 
-The extension manifest in [`package.json`](../package.json) declares `dist/extension.js` as `main`. [`esbuild.mjs`](../esbuild.mjs) starts at `src/extension.ts` and bundles its runtime dependencies into that file while leaving the VS Code API external.
+Saved notes use VS Code's native gutter indicator and Comments panel. Open a note to read it, use its edit action to change it, or use its delete action to remove it from the shared file.
 
-```mermaid
-flowchart LR
-    P[package.json] --> D[dist/extension.js]
-    E[src/extension.ts] -->|esbuild| D
-    D --> A[activate]
-    A --> C[NoteController]
-    C --> S[NoteStore]
-    C --> R[Re-anchoring]
-```
+### Change the shortcut
 
-## Activation
+If the default shortcut does nothing or conflicts with macOS or another extension:
 
-[`src/extension.ts`](../src/extension.ts) is intentionally small. Its exported `activate()` function:
+1. Run **Preferences: Open Keyboard Shortcuts** from the Command Palette.
+2. Search for **Ghost Comments: Create Note** or `ghostComments.createNote`.
+3. Select the edit icon, choose **Change Keybinding**, and press the shortcut you want.
+4. Press Enter to save it.
 
-1. Creates a `NoteController`.
-2. Adds it to `context.subscriptions` for cleanup.
-3. Calls `initialize()` to load existing workspace notes.
-
-VS Code activates Commenter when a contributed command such as `commenter.createNote` is invoked. The manifest also declares `workspaceContains:**/.commenter/notes.json`, allowing existing shared notes to be restored when a repository opens.
-
-## Extension Manifest
-
-[`package.json`](../package.json) defines the extension's public contract:
-
-- Extension identity and supported VS Code version.
-- Runtime bundle under `main`.
-- Commands for creating, submitting, editing, deleting, and reattaching notes.
-- Default keyboard shortcuts.
-- Native comment menu placement and visibility conditions.
-- The `commenter.authorName` setting.
-- Build, test, and packaging scripts.
-
-The internal comment commands are hidden from the Command Palette and appear only in the appropriate native comment controls.
-
-## Main Controller
-
-[`src/comments/noteController.ts`](../src/comments/noteController.ts) is the central coordinator between VS Code, storage, and anchoring.
-
-Its constructor:
-
-- Creates a native `CommentController`.
-- Configures the multiline input prompt.
-- Registers all commands.
-- Subscribes to document-open, document-save, file-rename, and workspace-folder events.
-- Supplies an empty commenting range list, which enables command-created comment input without showing add-comment controls on every line.
-
-The controller maintains:
-
-- One `NoteStore` per workspace folder.
-- Bindings between persisted note IDs and native comment threads.
-- A set of unsaved draft threads.
-- VS Code subscriptions that are disposed when the extension stops.
-
-## Creating a Note
-
-The `commenter.createNote` command follows this path:
-
-1. Read the active text editor.
-2. Confirm that the file belongs to an open workspace folder.
-3. Use the selected range, or the full current line when the selection is empty.
-4. Create an empty native `CommentThread` at that range.
-5. Expand the thread so its multiline editor is visible.
-6. Wait for the user to save or cancel.
-
-When the user submits the note, the controller:
-
-1. Validates the body.
-2. Reads `commenter.authorName`, prompting when it is empty.
-3. Generates a UUID for the note.
-4. Stores the selected text and surrounding context.
-5. Builds a `StoredNote` record.
-6. Persists the record through `NoteStore`.
-7. Replaces the draft with a collapsed saved thread.
-
-## Native Comment Model
-
-[`src/comments/noteComment.ts`](../src/comments/noteComment.ts) adapts stored note data to VS Code's `Comment` interface. It provides:
-
-- A Markdown body.
-- Author and timestamp information.
-- Preview and editing modes.
-- A reference to the parent thread.
-- The previous body for cancelling an edit.
-- A stale label when the original code cannot be found.
-
-Markdown is marked as untrusted and embedded HTML is disabled.
-
-## Persisted Data Model
-
-[`src/model/note.ts`](../src/model/note.ts) defines and validates the shared JSON format. Each note contains:
-
-```text
-id
-filePath
-range
-anchor text
-lines before and after the anchor
-body
-author
-createdAt
-updatedAt
-status: active | stale
-```
-
-The parser validates the schema version, normalized ranges, dates, unique IDs, relative paths, and required strings. Serialization sorts notes by path, position, and ID to keep Git diffs deterministic.
+For example, `Shift+Option+N` is a working macOS alternative. User keybindings override Ghost Comments's packaged default.
 
 ## Shared Storage
 
-[`src/storage/noteStore.ts`](../src/storage/noteStore.ts) owns `.commenter/notes.json` for one workspace folder.
+Each workspace folder stores notes in:
 
-It:
+```text
+.gc/notes.json
+```
 
-- Indexes notes by ID in memory.
-- Uses `vscode.workspace.fs` for local, remote, and virtual workspaces.
-- Serializes writes through a promise queue.
-- Writes to `notes.json.tmp` and then replaces the destination.
-- Watches external create, change, and delete events.
-- Avoids reprocessing its own equivalent write event.
-- Keeps the last valid in-memory state if external JSON is malformed.
+Commit this file to Git when notes should be shared with the repository team. Ghost Comments watches it for changes, including changes produced by Git operations, and updates visible threads without polling.
 
-Store changes emit an event. `NoteController` responds by reconciling the corresponding native comment threads.
+The file contains a `schemaVersion` and deterministic note records. Each record stores a workspace-relative path, range, contextual anchor, Markdown body, author, timestamps, and anchor status. Do not edit the schema version manually. Invalid files are reported and never overwrite the last valid in-memory state.
 
-## Re-Anchoring
+## Moving Code
 
-[`src/anchors/reanchor.ts`](../src/anchors/reanchor.ts) contains pure TypeScript text-matching logic and has no VS Code dependency.
+Ghost Comments stores both the original range and nearby text. When a document opens, it checks the original range and then searches for a unique contextual match if lines moved.
 
-When a note is created, `captureAnchor()` stores the exact selected text and up to two lines before and after it. When a document opens, `reanchor()`:
+If no safe match exists, the note becomes **stale**. A stale note remains in the Comments panel without a misleading editor marker. Open the intended file, select its new anchor, and choose **Reattach Note** from the stale thread.
 
-1. Checks whether the stored range and context still match.
-2. Searches for exact copies of the anchored text.
-3. Accepts a unique match.
-4. Scores duplicate matches using surrounding lines.
-5. Marks the note stale when no candidate can be selected safely.
+File renames within the same workspace folder update note paths automatically. Moving a file between workspace folders is not automatic because each folder owns a separate notes file.
 
-A stale note remains available in the Comments panel but has no editor range, preventing it from pointing at unrelated code. It can later be attached to a new selection with `commenter.reattachNote`.
+## Scope
 
-## Workspace Lifecycle
+The MVP supports one durable note per anchor with create, edit, delete, and reattach actions. It deliberately does not include replies, resolved state, cloud synchronization, authentication, a custom sidebar, or a webview.
 
-The controller creates a separate store for every workspace folder. It also:
+VS Code does not expose a general-purpose IntelliSense-style popup API for arbitrary extension input. Ghost Comments uses the supported native Comments API, which provides editor-anchored multiline input, theme integration, gutter indicators, and the Comments panel with minimal extension overhead.
 
-- Adds and removes stores when workspace folders change.
-- Updates stored relative paths when files are renamed inside the same workspace folder.
-- Validates anchors when relevant documents open.
-- Refreshes active anchor fingerprints when documents are saved.
-- Rejects untitled files and files outside an open workspace folder.
+## Development
 
-## Build Pipeline
+Requirements: Node.js 20 or later and VS Code 1.100 or later.
 
-[`tsconfig.json`](../tsconfig.json) enables strict TypeScript checks and emits testable JavaScript into `out`. [`esbuild.mjs`](../esbuild.mjs) creates the smaller production bundle in `dist`.
-
-Useful commands are:
+See the [development guide](https://github.com/Luzzu-Studios/ghost-comments/blob/main/docs/README.md) (`docs/README.md` in this checkout) for the entry points, architecture, runtime flow, storage model, re-anchoring algorithm, build pipeline, and test structure.
 
 ```bash
+npm install
 npm run check
 npm run test:unit
 npm run test:integration
 npm run build
+```
+
+### Manual sandbox
+
+The **Run Ghost Comments (Sandbox)** launch profile opens `test/fixtures/workspace` in a separate Extension Development Host with other extensions disabled.
+
+On macOS, the physical `F5` key can be assigned to Dictation. If macOS asks to enable Dictation, dismiss it and use one of these instead:
+
+- Press `Fn+F5`.
+- Open **Run and Debug**, select **Run Ghost Comments (Sandbox)**, and choose the start button.
+- Run **Debug: Start Debugging** from the Command Palette.
+
+In the Extension Development Host:
+
+1. Open `sample.ts`.
+2. Select `const message = ...` and press `Cmd+Option+N`.
+3. Enter an author name when prompted, write a multiline note, and choose **Save Note**.
+4. Confirm the native comment marker appears and `.gc/notes.json` is created.
+5. Put the cursor on another line without selecting text and create another note. It should anchor to the full line.
+6. Open a saved note and verify its edit and delete actions.
+7. Run **Developer: Reload Window** and confirm the notes return.
+8. To test re-anchoring, insert lines above a note and save. Close and reopen the file; the note should follow its original code.
+9. To test stale handling, close the annotated file, change or remove its anchored text outside the Extension Development Host, then reopen it. The note should remain in the Comments panel as stale without a gutter marker.
+10. Select a new location and choose **Reattach Note** from the stale thread.
+
+Delete `test/fixtures/workspace/.gc` after manual testing if you do not want to keep the sandbox notes.
+
+Run `npm run test:integration` to execute the automated integration suite in a clean Extension Host.
+
+Create a VSIX with:
+
+```bash
 npm run package
 ```
 
-The generated VSIX includes the manifest, README, and production bundle. Source files, test output, development dependencies, and downloaded test versions of VS Code are excluded by [`.vscodeignore`](../.vscodeignore).
-
-## Testing
-
-The test layers are:
-
-- [`src/test/reanchor.test.ts`](../src/test/reanchor.test.ts): unchanged and shifted ranges, duplicate text, deleted anchors, and empty lines.
-- [`src/test/note.test.ts`](../src/test/note.test.ts): schema validation and deterministic serialization.
-- [`src/integration/extension.test.ts`](../src/integration/extension.test.ts): activation, command invocation, and real workspace filesystem persistence.
-- [`.vscode-test.mjs`](../.vscode-test.mjs): launches the integration suite in an isolated Extension Host using [`test/fixtures/workspace`](../test/fixtures/workspace).
-
-The integration test verifies the command path and persistence boundary. Native comment-widget interactions are also checked manually through the **Run Commenter (Sandbox)** launch configuration.
+The extension is event-driven: it activates for the create command or an existing `.gc/notes.json`, watches only note files, and validates source anchors when relevant documents open or save.

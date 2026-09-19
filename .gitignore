@@ -1,1 +1,10 @@
-design-assets
+node_modules/
+dist/
+out/
+.vscode-test/
+*.vsix
+*.log
+.DS_Store
+
+docs/
+LLM-Reconstruction.md
