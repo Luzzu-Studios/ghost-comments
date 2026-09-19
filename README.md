@@ -65,6 +65,8 @@ npm run build
 
 ### Manual sandbox
 
+Run `npm run sandbox` to build the extension and open `sample.ts` in a separate VS Code window. The script downloads or reuses the same VS Code runtime as the integration tests, but runs no tests and stays open until you close the window. Sandbox settings and extensions are isolated under `.vscode-test/`; notes persist in `test/fixtures/workspace/.gc/notes.json`.
+
 The **Run Ghost Comments (Sandbox)** launch profile opens `test/fixtures/workspace` in a separate Extension Development Host with other extensions disabled.
 
 On macOS, the physical `F5` key can be assigned to Dictation. If macOS asks to enable Dictation, dismiss it and use one of these instead:

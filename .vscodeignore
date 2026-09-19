@@ -14,3 +14,4 @@ eslint.config.mjs
 tsconfig.json
 README (1).md
 design-assets/**
+scripts/**
