@@ -6,6 +6,8 @@ import { captureAnchor, reanchor } from "../anchors/reanchor";
 import type { StoredNote, TextRange } from "../model/note";
 import { NoteStore } from "../storage/noteStore";
 import type { BackupState } from "../storage/noteStore";
+import { configuredTags } from "../tags/tagConfiguration";
+import { nativeTagLabel } from "../tags/tagDefinitions";
 import { commentBodyText, NoteComment } from "./noteComment";
 
 interface Binding {
@@ -13,6 +15,16 @@ interface Binding {
   store: NoteStore;
   noteId: string;
   thread: vscode.CommentThread;
+  note: StoredNote;
+}
+
+export interface DiscussionReference {
+  workspaceUri: string;
+  noteId: string;
+}
+
+export interface DiscussionSummary extends DiscussionReference {
+  workspaceFolder: vscode.WorkspaceFolder;
   note: StoredNote;
 }
 
@@ -81,6 +93,8 @@ export class NoteController implements vscode.Disposable {
   private readonly notifiedDetached = new Set<string>();
   private readonly drafts = new Set<vscode.CommentThread>();
   private readonly subscriptions: vscode.Disposable[] = [];
+  private readonly discussionsEmitter = new vscode.EventEmitter<void>();
+  readonly onDidChangeDiscussions = this.discussionsEmitter.event;
 
   constructor(private readonly backupState?: BackupState) {
     this.controller = vscode.comments.createCommentController(
@@ -142,6 +156,16 @@ export class NoteController implements vscode.Disposable {
       vscode.commands.registerCommand("ghostComments.cancelReattach", () =>
         this.cancelReattach(),
       ),
+      vscode.commands.registerCommand(
+        "ghostComments.setTag",
+        (target?: vscode.CommentThread | DiscussionReference) =>
+          this.run(() => this.setTag(target)),
+      ),
+      vscode.commands.registerCommand(
+        "ghostComments.clearTag",
+        (target?: vscode.CommentThread | DiscussionReference) =>
+          this.run(() => this.clearTag(target)),
+      ),
       vscode.workspace.onDidOpenTextDocument((document) => {
         if (document.uri.scheme === "comment" && this.draftAwaitingEditor) {
           const draft = this.draftAwaitingEditor;
@@ -181,6 +205,27 @@ export class NoteController implements vscode.Disposable {
           }
         }),
       ),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration("ghostComments.tags")) {
+          return;
+        }
+        for (const store of this.stores.values()) {
+          this.reconcile(store);
+        }
+        this.discussionsEmitter.fire();
+      }),
+      this.discussionsEmitter,
+    );
+  }
+
+  get discussions(): readonly DiscussionSummary[] {
+    return [...this.stores.values()].flatMap((store) =>
+      store.all.map((note) => ({
+        workspaceUri: store.workspaceFolder.uri.toString(),
+        noteId: note.id,
+        workspaceFolder: store.workspaceFolder,
+        note,
+      })),
     );
   }
 
@@ -212,7 +257,10 @@ export class NoteController implements vscode.Disposable {
     this.stores.set(key, store);
     this.subscriptions.push(
       store,
-      store.onDidChange(() => this.reconcile(store)),
+      store.onDidChange(() => {
+        this.reconcile(store);
+        this.discussionsEmitter.fire();
+      }),
     );
     try {
       await store.load();
@@ -232,6 +280,7 @@ export class NoteController implements vscode.Disposable {
     this.clearBindings(store);
     this.stores.delete(folder.uri.toString());
     store.dispose();
+    this.discussionsEmitter.fire();
   }
 
   private managedStore(uri: vscode.Uri): NoteStore | undefined {
@@ -317,7 +366,9 @@ export class NoteController implements vscode.Disposable {
     }
     const range = storedRange(thread.range);
     const now = new Date().toISOString();
+    const selectedTag = await this.pickTag();
     const note: StoredNote = {
+      ...(selectedTag ? { tag: selectedTag } : {}),
       id: randomUUID(),
       filePath: this.relativePath(store, thread.uri),
       range,
@@ -354,6 +405,101 @@ export class NoteController implements vscode.Disposable {
       );
     }
     return author;
+  }
+
+  private async pickTag(): Promise<string | null | undefined> {
+    const definitions = configuredTags();
+    const selected = await vscode.window.showQuickPick(
+      [
+        ...definitions.map((tag) => ({
+          label: nativeTagLabel(tag.id, definitions)!,
+          description: tag.id,
+          tagId: tag.id as string | null,
+        })),
+        {
+          label: "$(circle-slash) Untagged",
+          description: "No category",
+          tagId: null,
+        },
+      ],
+      { placeHolder: "Choose an optional Ghost Comments tag" },
+    );
+    return selected?.tagId;
+  }
+
+  private async targetBinding(
+    target?: vscode.CommentThread | DiscussionReference,
+  ): Promise<Binding | undefined> {
+    if (target && "comments" in target) {
+      return this.requireBinding(target);
+    }
+    if (target) {
+      return this.bindings.get(`${target.workspaceUri}::${target.noteId}`);
+    }
+    const selected = await vscode.window.showQuickPick(
+      [...this.bindings.values()].map((binding) => ({
+        label: binding.note.body.split(/\r?\n/).find((line) => line.trim())?.trim()
+          ?? "Untitled note",
+        description: `${binding.store.workspaceFolder.name}/${binding.note.filePath}`,
+        binding,
+      })),
+      { placeHolder: "Choose a Ghost Comments discussion" },
+    );
+    return selected?.binding;
+  }
+
+  private async setTag(
+    target?: vscode.CommentThread | DiscussionReference,
+  ): Promise<void> {
+    const binding = await this.targetBinding(target);
+    if (!binding) {
+      return;
+    }
+    const tag = await this.pickTag();
+    if (tag === undefined) {
+      return;
+    }
+    await this.applyTag(binding, tag);
+  }
+
+  private async clearTag(
+    target?: vscode.CommentThread | DiscussionReference,
+  ): Promise<void> {
+    const binding = await this.targetBinding(target);
+    if (binding) {
+      await this.applyTag(binding, null);
+    }
+  }
+
+  private async applyTag(binding: Binding, tag: string | null): Promise<void> {
+    const note = this.currentNote(binding);
+    const nextTag = tag ?? undefined;
+    if (note.tag === nextTag) {
+      return;
+    }
+    const withoutTag = { ...note };
+    delete withoutTag.tag;
+    await binding.store.upsert({
+      ...withoutTag,
+      ...(nextTag ? { tag: nextTag } : {}),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async revealDiscussion(reference: DiscussionReference): Promise<void> {
+    const binding = this.bindings.get(
+      `${reference.workspaceUri}::${reference.noteId}`,
+    );
+    if (!binding) {
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument(binding.thread.uri);
+    const editor = await vscode.window.showTextDocument(document);
+    if (binding.note.status === "active") {
+      const range = editorRange(binding.note.range);
+      editor.selection = new vscode.Selection(range.start, range.end);
+      editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    }
   }
 
   private async replyNote(reply: vscode.CommentReply): Promise<void> {
@@ -623,6 +769,7 @@ export class NoteController implements vscode.Disposable {
 
   private reconcile(store: NoteStore): void {
     const notes = store.all;
+    const tagDefinitions = configuredTags();
     const liveKeys = new Set(notes.map((note) => bindingKey(store, note.id)));
     for (const binding of this.bindings.values()) {
       if (binding.store === store && !liveKeys.has(binding.key)) {
@@ -681,6 +828,9 @@ export class NoteController implements vscode.Disposable {
       );
       let changed = false;
       const comments = [note, ...(note.replies ?? [])].map((message, index) => {
+        const label = index === 0
+          ? nativeTagLabel(note.tag, tagDefinitions)
+          : undefined;
         const comment = existing.get(message.id);
         if (comment) {
           changed =
@@ -689,6 +839,7 @@ export class NoteController implements vscode.Disposable {
               message.author,
               message.updatedAt,
               stale,
+              label,
             ) || changed;
           return comment;
         }
@@ -701,6 +852,7 @@ export class NoteController implements vscode.Disposable {
           message.updatedAt,
           stale,
           index === 0 ? undefined : message.id,
+          label,
         );
       });
       if (

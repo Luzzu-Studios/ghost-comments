@@ -24,13 +24,14 @@ export class NoteComment implements vscode.Comment {
     updatedAt: string,
     stale: boolean,
     readonly replyId?: string,
+    label?: string,
   ) {
     this.body = this.previewBody(body, stale);
     this.savedBody = body;
     this.author = { name: author };
     this.timestamp = new Date(updatedAt);
     this.contextValue = stale ? "stale" : "active";
-    this.label = undefined;
+    this.label = label;
   }
 
   update(
@@ -38,6 +39,7 @@ export class NoteComment implements vscode.Comment {
     author: string,
     updatedAt: string,
     stale: boolean,
+    label?: string,
   ): boolean {
     const contextValue = stale ? "stale" : "active";
     const timestamp = new Date(updatedAt);
@@ -45,7 +47,8 @@ export class NoteComment implements vscode.Comment {
       this.savedBody === body &&
       this.author.name === author &&
       this.timestamp.getTime() === timestamp.getTime() &&
-      this.contextValue === contextValue
+      this.contextValue === contextValue &&
+      this.label === label
     ) {
       return false;
     }
@@ -53,7 +56,7 @@ export class NoteComment implements vscode.Comment {
     this.author = { name: author };
     this.timestamp = timestamp;
     this.contextValue = contextValue;
-    this.label = undefined;
+    this.label = label;
     // Updating another message or receiving a file change must not discard a draft.
     if (this.mode !== vscode.CommentMode.Editing) {
       this.body = this.previewBody(body, stale);

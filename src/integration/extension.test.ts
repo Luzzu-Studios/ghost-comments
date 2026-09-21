@@ -6,6 +6,7 @@ import { NoteController } from "../comments/noteController";
 import type { NoteComment } from "../comments/noteComment";
 import { NoteStore } from "../storage/noteStore";
 import type { BackupState } from "../storage/noteStore";
+import { TagTreeProvider } from "../tags/tagTree";
 
 suite("Ghost Comments", () => {
   const folder = vscode.workspace.workspaceFolders![0]!;
@@ -50,6 +51,7 @@ suite("Ghost Comments", () => {
     const original = document.getText();
     const controller = new NoteController();
     controller["authorName"] = async () => "Focus Test";
+    controller["pickTag"] = async () => null;
     try {
       await controller.initialize();
       editor.selection = new vscode.Selection(0, 0, 0, 6);
@@ -88,6 +90,7 @@ suite("Ghost Comments", () => {
   test("preserves detached discussions until explicit selection or line reattachment", async () => {
     const controller = new NoteController();
     controller["authorName"] = async () => "Integration Author";
+    controller["pickTag"] = async () => "todo";
     const attachmentPrompts: ((choice: string | undefined) => void)[] = [];
     controller["showAttachmentPrompt"] = () =>
       new Promise<string | undefined>((resolve) => {
@@ -125,8 +128,24 @@ suite("Ghost Comments", () => {
       assert.equal(draft.label, "Add a Ghost Comment");
       await controller["submitNote"]({ thread: draft, text: "Initial note" });
       const binding = () => [...controller["bindings"].values()][0]!;
+      assert.equal(binding().store.all[0]!.tag, "todo");
+      assert.equal((binding().thread.comments[0] as NoteComment).label, "🟠 To Do");
+      const tagTree = new TagTreeProvider(controller);
+      try {
+        const tagNodes = tagTree.getChildren();
+        assert.equal(tagNodes.length, 1);
+        assert.equal(tagTree.getTreeItem(tagNodes[0]!).label, "To Do");
+        const fileNodes = tagTree.getChildren(tagNodes[0]!);
+        assert.equal(fileNodes.length, 1);
+        assert.equal(tagTree.getTreeItem(fileNodes[0]!).label, "sample.ts");
+        const noteNodes = tagTree.getChildren(fileNodes[0]!);
+        assert.equal(noteNodes.length, 1);
+        assert.equal(tagTree.getTreeItem(noteNodes[0]!).label, "Initial note");
+      } finally {
+        tagTree.dispose();
+      }
       assert.equal(binding().thread.canReply, true);
-      const originalUpdatedAt = binding().store.all[0]!.updatedAt;
+      let originalUpdatedAt = binding().store.all[0]!.updatedAt;
       const storageBeforeUnchangedSave = new TextDecoder().decode(
         await vscode.workspace.fs.readFile(binding().store.storageUri),
       );
@@ -144,6 +163,16 @@ suite("Ghost Comments", () => {
         storageBeforeUnchangedSave,
       );
       assert.equal(binding().store.all[0]!.updatedAt, originalUpdatedAt);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      controller["pickTag"] = async () => "question";
+      await controller["setTag"](binding().thread);
+      assert.equal(binding().store.all[0]!.tag, "question");
+      assert.equal((binding().thread.comments[0] as NoteComment).label, "🔵 Question");
+      assert.notEqual(binding().store.all[0]!.updatedAt, originalUpdatedAt);
+      await controller["clearTag"](binding().thread);
+      assert.equal(binding().store.all[0]!.tag, undefined);
+      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
+      originalUpdatedAt = binding().store.all[0]!.updatedAt;
       await controller["replyNote"]({
         thread: binding().thread,
         text: "**My own reply**",
@@ -296,6 +325,7 @@ suite("Ghost Comments", () => {
 
   test("groups missing anchors and keeps persisted detached notes detached on reload", async () => {
     const controller = new NoteController();
+    controller["pickTag"] = async () => null;
     const prompts: number[] = [];
     controller["warnAboutDeletedCode"] = async (count) => {
       prompts.push(count);
@@ -365,6 +395,9 @@ suite("Ghost Comments", () => {
     await extension.activate();
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes("ghostComments.createNote"));
+    assert.ok(commands.includes("ghostComments.setTag"));
+    assert.ok(commands.includes("ghostComments.clearTag"));
+    assert.ok(commands.includes("ghostComments.revealDiscussion"));
     const document = await vscode.workspace.openTextDocument(
       vscode.Uri.joinPath(folder.uri, "sample.ts"),
     );

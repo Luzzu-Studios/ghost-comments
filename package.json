@@ -13,10 +13,28 @@
   ],
   "icon": "assets/256pxSolov4.png",
   "activationEvents": [
-    "workspaceContains:**/.gc/notes.json"
+    "workspaceContains:**/.gc/notes.json",
+    "onView:ghostComments.tags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ghostComments",
+          "title": "Ghost Comments",
+          "icon": "assets/ghost-comments-view-v2.svg"
+        }
+      ]
+    },
+    "views": {
+      "ghostComments": [
+        {
+          "id": "ghostComments.tags",
+          "name": "Tagged Comments"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "ghostComments.createNote",
@@ -70,6 +88,23 @@
         "title": "Cancel Reattachment",
         "category": "Ghost Comments",
         "enablement": "ghostComments.reattaching"
+      },
+      {
+        "command": "ghostComments.setTag",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "ghostComments.clearTag",
+        "title": "Clear Tag",
+        "category": "Ghost Comments",
+        "icon": "$(close)"
+      },
+      {
+        "command": "ghostComments.revealDiscussion",
+        "title": "Open Ghost Comment",
+        "category": "Ghost Comments"
       }
     ],
     "keybindings": [
@@ -109,6 +144,10 @@
         {
           "command": "ghostComments.replyNote",
           "when": "false"
+        },
+        {
+          "command": "ghostComments.revealDiscussion",
+          "when": "false"
         }
       ],
       "comments/commentThread/context": [
@@ -133,6 +172,16 @@
           "command": "ghostComments.reattachNote",
           "group": "navigation",
           "when": "commentController == ghostComments && commentThread == stale"
+        },
+        {
+          "command": "ghostComments.setTag",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && commentThread != draft"
+        },
+        {
+          "command": "ghostComments.clearTag",
+          "group": "navigation@3",
+          "when": "commentController == ghostComments && commentThread != draft"
         }
       ],
       "comments/comment/title": [
@@ -165,6 +214,18 @@
           "when": "ghostComments.reattaching",
           "group": "navigation"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "ghostComments.setTag",
+          "when": "view == ghostComments.tags && viewItem == ghostComments.note",
+          "group": "inline@1"
+        },
+        {
+          "command": "ghostComments.clearTag",
+          "when": "view == ghostComments.tags && viewItem == ghostComments.note",
+          "group": "inline@2"
+        }
       ]
     },
     "configuration": {
@@ -182,6 +243,65 @@
           "minimum": 0,
           "scope": "window",
           "description": "Number of saved note changes between updates to .gc/notes-backup.json. The first saved change creates the backup; 0 disables automatic backups."
+        },
+        "ghostComments.tags": {
+          "type": "array",
+          "scope": "window",
+          "default": [
+            {
+              "id": "todo",
+              "label": "To Do",
+              "color": "orange"
+            },
+            {
+              "id": "question",
+              "label": "Question",
+              "color": "blue"
+            },
+            {
+              "id": "important",
+              "label": "Important",
+              "color": "red"
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "color": "green"
+            }
+          ],
+          "description": "Ordered tag definitions used by Ghost Comments. Edit in settings.json to customize IDs, labels, colors, and order.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                "description": "Stable ID stored with tagged notes."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "orange",
+                  "yellow",
+                  "green",
+                  "blue",
+                  "purple",
+                  "gray"
+                ]
+              }
+            }
+          }
         }
       }
     }

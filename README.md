@@ -12,6 +12,24 @@ The first note prompts for an author name. Change it later with the `Ghost Comme
 
 Saved notes use VS Code's native gutter indicator and Comments panel. Open a note to read it, use its edit action to change it, or use its delete action to remove it from the shared file.
 
+## Tags and Tagged Comments
+
+When saving a new note, choose an optional category tag. Existing discussions can be changed with **Ghost Comments: Set Tag…** or **Clear Tag** from the comment or Command Palette. Tags categorize the entire discussion, including its replies.
+
+Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note**. Selecting an active note opens and reveals its code; stale notes open their file without pointing at an unsafe range. The native Comments tab remains available and shows tags as colored emoji labels because VS Code does not expose per-comment colors or custom grouping there.
+
+The default tags are To Do, Question, Important, and Done. Customize their stable IDs, labels, colors, and order through **Preferences: Open Settings (JSON)**:
+
+```json
+"ghostComments.tags": [
+  { "id": "todo", "label": "To Do", "color": "orange" },
+  { "id": "review", "label": "Needs Review", "color": "purple" },
+  { "id": "done", "label": "Done", "color": "green" }
+]
+```
+
+Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `gray`. Keep an ID unchanged when renaming or recoloring a tag because the ID is stored in `notes.json`. Removing a definition does not discard assignments; affected notes appear under a gray `Unknown: <id>` group.
+
 ### Change the shortcut
 
 If the default shortcut does nothing or conflicts with macOS or another extension:
@@ -37,7 +55,7 @@ Ghost Comments also maintains a passive recovery snapshot at `.gc/notes-backup.j
 
 The backup can trail `notes.json` by up to the configured interval and is never restored automatically. If `notes.json` is deleted or corrupted, preserve or remove the damaged file, copy or rename `notes-backup.json` to `notes.json`, and run **Developer: Reload Window**. The backup uses the same validated schema as the primary file, so no conversion is required. Restoring a backup discards changes made after that snapshot.
 
-The file contains a `schemaVersion` and deterministic note records. Each record stores a workspace-relative path, range, contextual anchor, Markdown body, author, timestamps, and anchor status. Do not edit the schema version manually. Invalid files are reported and never overwrite the last valid in-memory state.
+The file contains a `schemaVersion` and deterministic note records. Each record stores a workspace-relative path, range, contextual anchor, Markdown body, optional tag ID, author, timestamps, and anchor status. Do not edit the schema version manually. Invalid files are reported and never overwrite the last valid in-memory state.
 
 ## Moving Code
 
@@ -55,7 +73,7 @@ File renames within the same workspace folder update note paths automatically. M
 
 Each anchored note supports Markdown replies, including replies to your own notes. Replies are stored with the note in `.gc/notes.json` and can be edited or deleted individually. Deleting the initial note deletes the entire discussion. All collaborators should use a reply-capable version of Ghost Comments before editing shared notes; older versions do not preserve replies.
 
-The MVP supports create, edit, delete, reply, and reattach actions. It deliberately does not include resolved state, cloud synchronization, authentication, a custom sidebar, or a webview.
+The MVP supports create, edit, delete, reply, tagging, browsing by tag, and reattach actions. It deliberately does not include resolved state, cloud synchronization, authentication, or a webview.
 
 VS Code does not expose a general-purpose IntelliSense-style popup API for arbitrary extension input. Ghost Comments uses the supported native Comments API, which provides editor-anchored multiline input, theme integration, gutter indicators, and the Comments panel with minimal extension overhead.
 
@@ -89,14 +107,15 @@ In the Extension Development Host:
 
 1. Open `sample.ts`.
 2. Select `const message = ...` and press `Cmd+Option+N`.
-3. Enter an author name when prompted, write a multiline note, and choose **Save Note**.
+3. Enter an author name when prompted, write a multiline note, choose **Save Note**, and select a tag.
 4. Confirm the native comment marker appears and `.gc/notes.json` is created.
 5. Put the cursor on another line without selecting text and create another note. It should anchor to the full line.
 6. Open a saved note and verify its edit and delete actions.
 7. Run **Developer: Reload Window** and confirm the notes return.
 8. To test re-anchoring, insert lines above a note and save. Close and reopen the file; the note should follow its original code.
 9. To test stale handling, close the annotated file, change or remove its anchored text outside the Extension Development Host, then reopen it. The note should remain in the Comments panel as stale without a gutter marker.
-10. Choose **Reattach Note**, select a new location, then choose **Attach here**. Repeat with only a cursor to verify whole-line attachment; cancel once to verify the note stays detached.
+10. Open the Ghost Comments Activity Bar view, verify tag grouping, change and clear a tag, and select a note to navigate to it.
+11. Choose **Reattach Note**, select a new location, then choose **Attach here**. Repeat with only a cursor to verify whole-line attachment; cancel once to verify the note stays detached.
 
 Delete `test/fixtures/workspace/.gc` after manual testing if you do not want to keep the sandbox notes.
 
@@ -108,4 +127,4 @@ Create a VSIX with:
 npm run package
 ```
 
-The extension is event-driven: it activates for the create command or an existing `.gc/notes.json`, watches only note files, and validates source anchors when relevant documents open or save.
+The extension is event-driven: it activates for its commands, the Ghost Comments view, or an existing `.gc/notes.json`, watches only note files, and validates source anchors when relevant documents open or save.

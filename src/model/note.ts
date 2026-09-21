@@ -26,6 +26,7 @@ export interface StoredReply {
 
 export interface StoredNote {
   replies?: StoredReply[];
+  tag?: string;
   id: string;
   filePath: string;
   range: TextRange;
@@ -86,6 +87,13 @@ export function parseNoteFile(text: string): NoteFile {
       throw new Error(`Note ${index} filePath must be relative to its workspace folder.`);
     }
     const body = requiredString(value.body, index, "body");
+    let tag: string | undefined;
+    if (value.tag !== undefined) {
+      tag = requiredString(value.tag, index, "tag");
+      if (!/^[a-z0-9][a-z0-9._-]*$/.test(tag)) {
+        throw new Error(`Note ${index} has an invalid tag.`);
+      }
+    }
     const author = requiredString(value.author, index, "author");
     const createdAt = requiredString(value.createdAt, index, "createdAt");
     const updatedAt = requiredString(value.updatedAt, index, "updatedAt");
@@ -139,6 +147,7 @@ export function parseNoteFile(text: string): NoteFile {
     }
     return {
       ...(replies === undefined ? {} : { replies }),
+      ...(tag === undefined ? {} : { tag }),
       id, filePath, range: { start, end },
       anchor: { text: anchor.text, before: anchor.before, after: anchor.after },
       body, author, createdAt, updatedAt, status: value.status,

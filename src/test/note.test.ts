@@ -78,6 +78,18 @@ test("round-trips ordered Markdown replies from the original author", () => {
   assert.deepEqual(parseNoteFile(serializeNoteFile([original])).notes, [original]);
 });
 
+test("round-trips optional category tags without changing schema version", () => {
+  const tagged = { ...note("tagged"), tag: "needs.review" };
+  assert.deepEqual(parseNoteFile(serializeNoteFile([tagged])).notes, [tagged]);
+  assert.deepEqual(parseNoteFile(serializeNoteFile([note("untagged")])).notes, [note("untagged")]);
+  for (const tag of ["", "To Do", "bad/tag", "-leading", 1, null]) {
+    assert.throws(
+      () => parseNoteFile(fileWith({ ...note("invalid"), tag })),
+      /invalid tag/,
+    );
+  }
+});
+
 test("rejects malformed replies instead of silently dropping them", () => {
   const reply = { id: "reply", body: "Reply", author: "Author", createdAt: timestamp, updatedAt: timestamp };
   for (const replies of [null, {}, [null], [{ ...reply, body: " " }], [{ ...reply, author: "" }],
