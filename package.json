@@ -175,6 +175,13 @@
           "default": "",
           "scope": "window",
           "description": "Display name stored with newly created notes."
+        },
+        "ghostComments.backupInterval": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 0,
+          "scope": "window",
+          "description": "Number of saved note changes between updates to .gc/notes-backup.json. The first saved change creates the backup; 0 disables automatic backups."
         }
       }
     }

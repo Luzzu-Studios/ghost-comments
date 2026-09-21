@@ -5,9 +5,23 @@ import type { StoredNote } from "../model/note";
 import { NoteController } from "../comments/noteController";
 import type { NoteComment } from "../comments/noteComment";
 import { NoteStore } from "../storage/noteStore";
+import type { BackupState } from "../storage/noteStore";
 
 suite("Ghost Comments", () => {
   const folder = vscode.workspace.workspaceFolders![0]!;
+
+  class MemoryBackupState implements BackupState {
+    private readonly values = new Map<string, unknown>();
+
+    get<T>(key: string, defaultValue: T): T {
+      return (this.values.get(key) as T | undefined) ?? defaultValue;
+    }
+
+    update(key: string, value: unknown): Thenable<void> {
+      this.values.set(key, value);
+      return Promise.resolve();
+    }
+  }
 
   async function cleanStorage(): Promise<void> {
     try {
@@ -112,6 +126,24 @@ suite("Ghost Comments", () => {
       await controller["submitNote"]({ thread: draft, text: "Initial note" });
       const binding = () => [...controller["bindings"].values()][0]!;
       assert.equal(binding().thread.canReply, true);
+      const originalUpdatedAt = binding().store.all[0]!.updatedAt;
+      const storageBeforeUnchangedSave = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(binding().store.storageUri),
+      );
+      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      await vscode.workspace.fs.createDirectory(storageTemporary);
+      try {
+        await controller["refreshAnchors"](document);
+      } finally {
+        await vscode.workspace.fs.delete(storageTemporary, { recursive: true });
+      }
+      assert.equal(
+        new TextDecoder().decode(
+          await vscode.workspace.fs.readFile(binding().store.storageUri),
+        ),
+        storageBeforeUnchangedSave,
+      );
+      assert.equal(binding().store.all[0]!.updatedAt, originalUpdatedAt);
       await controller["replyNote"]({
         thread: binding().thread,
         text: "**My own reply**",
@@ -135,6 +167,7 @@ suite("Ghost Comments", () => {
       await vscode.workspace.applyEdit(edit);
       await waitFor(() => finishWarning !== undefined);
       assert.equal(binding().store.all[0]!.status, "stale");
+      assert.equal(binding().store.all[0]!.updatedAt, originalUpdatedAt);
       await controller["refreshAnchors"](document);
       assert.equal(binding().store.all[0]!.anchor.text, deletedText);
       const restore = new vscode.WorkspaceEdit();
@@ -361,7 +394,11 @@ suite("Ghost Comments", () => {
       const text = new TextDecoder().decode(
         await vscode.workspace.fs.readFile(store.storageUri),
       );
+      const originalBackup = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(store.backupUri),
+      );
       assert.deepEqual(parseNoteFile(text).notes, [note]);
+      assert.equal(originalBackup, text);
       note.replies = [
         {
           id: "own-reply",
@@ -380,6 +417,110 @@ suite("Ghost Comments", () => {
       );
       await assert.rejects(() => store.load());
       assert.deepEqual(store.all, [note]);
+      assert.equal(
+        new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri)),
+        originalBackup,
+      );
+      await vscode.workspace.fs.delete(store.storageUri);
+      await store.load();
+      assert.deepEqual(store.all, []);
+      assert.equal(
+        new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri)),
+        originalBackup,
+      );
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test("creates and periodically updates a durable notes backup", async () => {
+    const state = new MemoryBackupState();
+    let interval = 2;
+    let store = new NoteStore(folder, state, () => interval);
+    const note: StoredNote = {
+      id: "backup-note",
+      filePath: "sample.ts",
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 6 },
+      },
+      anchor: { text: "export", before: [], after: [] },
+      body: "First version",
+      author: "Backup Test",
+      status: "active",
+      createdAt: "2026-09-21T10:00:00.000Z",
+      updatedAt: "2026-09-21T10:00:00.000Z",
+    };
+    const read = async (uri: vscode.Uri): Promise<string> =>
+      new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+
+    try {
+      await store.load();
+      await store.upsert(note);
+      const firstBackup = await read(store.backupUri);
+      assert.equal(firstBackup, await read(store.storageUri));
+
+      const secondNote: StoredNote = {
+        ...note,
+        id: "second-backup-note",
+        range: {
+          start: { line: 1, character: 0 },
+          end: { line: 1, character: 6 },
+        },
+        body: "Second note",
+      };
+      await store.upsertMany([
+        { ...note, body: "Second version" },
+        secondNote,
+      ]);
+      assert.equal(await read(store.backupUri), firstBackup);
+
+      // Recreating the store simulates a VS Code restart. The shared state keeps
+      // the pending count, so the next change reaches the configured interval.
+      store.dispose();
+      store = new NoteStore(folder, state, () => interval);
+      await store.load();
+      await store.upsert({ ...store.all[0]!, body: "Third version" });
+      const batchedBackup = parseNoteFile(await read(store.backupUri)).notes;
+      assert.equal(batchedBackup.length, 2);
+      assert.equal(batchedBackup[0]!.body, "Third version");
+
+      // A lower interval applies on the next change, while zero pauses updates.
+      interval = 0;
+      const pausedBackup = await read(store.backupUri);
+      await store.upsert({ ...store.all[0]!, body: "Paused version" });
+      assert.equal(await read(store.backupUri), pausedBackup);
+      interval = 1;
+      await store.upsert({ ...store.all[0]!, body: "Resumed version" });
+      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Resumed version");
+
+      // A failed backup leaves the primary save in place and remains due for retry.
+      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json.tmp");
+      await vscode.workspace.fs.createDirectory(backupTemporary);
+      await assert.rejects(() =>
+        store.upsert({ ...store.all[0]!, body: "Backup initially fails" }),
+      );
+      assert.equal(parseNoteFile(await read(store.storageUri)).notes[0]!.body, "Backup initially fails");
+      assert.notEqual(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Backup initially fails");
+      await vscode.workspace.fs.delete(backupTemporary, { recursive: true });
+      await store.upsert({ ...store.all[0]!, body: "Backup retry succeeds" });
+      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Backup retry succeeds");
+
+      // A primary-write failure restores the in-memory and on-disk states.
+      const primaryBeforeFailure = await read(store.storageUri);
+      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      await vscode.workspace.fs.createDirectory(primaryTemporary);
+      await assert.rejects(() =>
+        store.upsert({ ...store.all[0]!, body: "Primary write fails" }),
+      );
+      assert.equal(await read(store.storageUri), primaryBeforeFailure);
+      assert.notEqual(store.all[0]!.body, "Primary write fails");
+      await vscode.workspace.fs.delete(primaryTemporary, { recursive: true });
+
+      // Removing a backup recreates it on the next enabled change.
+      await vscode.workspace.fs.delete(store.backupUri);
+      await store.upsert({ ...store.all[0]!, body: "Replacement backup" });
+      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Replacement backup");
     } finally {
       store.dispose();
     }

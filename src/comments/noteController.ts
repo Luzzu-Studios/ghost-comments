@@ -5,6 +5,7 @@ import { trackEdits } from "../anchors/trackEdits";
 import { captureAnchor, reanchor } from "../anchors/reanchor";
 import type { StoredNote, TextRange } from "../model/note";
 import { NoteStore } from "../storage/noteStore";
+import type { BackupState } from "../storage/noteStore";
 import { commentBodyText, NoteComment } from "./noteComment";
 
 interface Binding {
@@ -40,6 +41,16 @@ function sameRange(a: TextRange, b: TextRange): boolean {
   );
 }
 
+function sameAnchor(a: StoredNote["anchor"], b: StoredNote["anchor"]): boolean {
+  return (
+    a.text === b.text &&
+    a.before.length === b.before.length &&
+    a.before.every((line, index) => line === b.before[index]) &&
+    a.after.length === b.after.length &&
+    a.after.every((line, index) => line === b.after[index])
+  );
+}
+
 function bindingKey(store: NoteStore, noteId: string): string {
   return `${store.workspaceFolder.uri.toString()}::${noteId}`;
 }
@@ -71,7 +82,7 @@ export class NoteController implements vscode.Disposable {
   private readonly drafts = new Set<vscode.CommentThread>();
   private readonly subscriptions: vscode.Disposable[] = [];
 
-  constructor() {
+  constructor(private readonly backupState?: BackupState) {
     this.controller = vscode.comments.createCommentController(
       "ghostComments",
       "Ghost Comments",
@@ -197,7 +208,7 @@ export class NoteController implements vscode.Disposable {
     if (this.stores.has(key)) {
       return;
     }
-    const store = new NoteStore(folder);
+    const store = new NoteStore(folder, this.backupState);
     this.stores.set(key, store);
     this.subscriptions.push(
       store,
@@ -818,17 +829,18 @@ export class NoteController implements vscode.Disposable {
     deleted: StoredNote[],
   ): Promise<void> {
     try {
-      for (const note of deleted) {
+      const updates = deleted.flatMap((note): StoredNote[] => {
         const current = store.all.find((entry) => entry.id === note.id);
-        if (current) {
-          await store.upsert({
+        return current
+          ? [{
             ...current,
             range: note.range,
             anchor: note.anchor,
             status: "stale",
-          });
-        }
-      }
+          }]
+          : [];
+      });
+      await store.upsertMany(updates);
     } finally {
       for (const note of deleted) {
         this.pendingDeletions.delete(bindingKey(store, note.id));
@@ -843,6 +855,7 @@ export class NoteController implements vscode.Disposable {
       return;
     }
     const filePath = this.relativePath(store, document.uri);
+    const updates: StoredNote[] = [];
     for (const note of store.all.filter((note) => note.filePath === filePath)) {
       if (
         note.status === "stale" ||
@@ -856,14 +869,14 @@ export class NoteController implements vscode.Disposable {
         this.trackNote(store, { ...note, range }, document);
       }
       if (result.status !== note.status || !sameRange(range, note.range)) {
-        await store.upsert({
+        updates.push({
           ...note,
           range,
           status: result.status,
-          updatedAt: new Date().toISOString(),
         });
       }
     }
+    await store.upsertMany(updates);
     void this.run(() =>
       this.promptDetached(
         store,
@@ -896,18 +909,12 @@ export class NoteController implements vscode.Disposable {
           return [];
         }
         const range = storedRange(liveRange);
-        return [
-          {
-            ...note,
-            range,
-            anchor: captureAnchor(document.getText(), range),
-            updatedAt: new Date().toISOString(),
-          },
-        ];
+        const anchor = captureAnchor(document.getText(), range);
+        return sameRange(range, note.range) && sameAnchor(anchor, note.anchor)
+          ? []
+          : [{ ...note, range, anchor }];
       });
-    for (const note of updates) {
-      await store.upsert(note);
-    }
+    await store.upsertMany(updates);
   }
 
   private async renameFiles(event: vscode.FileRenameEvent): Promise<void> {

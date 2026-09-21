@@ -33,6 +33,10 @@ Each workspace folder stores notes in:
 
 Commit this file to Git when notes should be shared with the repository team. Ghost Comments watches it for changes, including changes produced by Git operations, and updates visible threads without polling.
 
+Ghost Comments also maintains a passive recovery snapshot at `.gc/notes-backup.json`. The first successful note change creates it, and by default every 10 later changes update it. Creates, edits, replies, deletions, reattachments, anchor changes, and file-path updates all count. An unchanged source-file save performs no notes-file write and does not advance the interval; one save that adjusts several anchors counts once. Set **Ghost Comments: Backup Interval** to another non-negative number, or to `0` to disable automatic backups. The interval is tracked separately for each workspace folder and continues across VS Code restarts.
+
+The backup can trail `notes.json` by up to the configured interval and is never restored automatically. If `notes.json` is deleted or corrupted, preserve or remove the damaged file, copy or rename `notes-backup.json` to `notes.json`, and run **Developer: Reload Window**. The backup uses the same validated schema as the primary file, so no conversion is required. Restoring a backup discards changes made after that snapshot.
+
 The file contains a `schemaVersion` and deterministic note records. Each record stores a workspace-relative path, range, contextual anchor, Markdown body, author, timestamps, and anchor status. Do not edit the schema version manually. Invalid files are reported and never overwrite the last valid in-memory state.
 
 ## Moving Code
