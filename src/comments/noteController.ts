@@ -62,6 +62,7 @@ export class NoteController implements vscode.Disposable {
   private readonly pendingDeletions = new Set<string>();
   private pendingAttachment: string | undefined;
   private attachmentPromptId = 0;
+  private draftAwaitingEditor: vscode.CommentThread | undefined;
   private readonly attachmentStatus = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100,
@@ -130,9 +131,19 @@ export class NoteController implements vscode.Disposable {
       vscode.commands.registerCommand("ghostComments.cancelReattach", () =>
         this.cancelReattach(),
       ),
-      vscode.workspace.onDidOpenTextDocument((document) =>
-        this.run(() => this.validateAnchors(document)),
-      ),
+      vscode.workspace.onDidOpenTextDocument((document) => {
+        if (document.uri.scheme === "comment" && this.draftAwaitingEditor) {
+          const draft = this.draftAwaitingEditor;
+          this.draftAwaitingEditor = undefined;
+          if (this.drafts.has(draft)) {
+            const comment = draft.comments[0] as NoteComment;
+            const focused = new NoteComment(comment.noteId, document.getText(), comment.author.name, draft, comment.timestamp.toISOString(), false);
+            focused.mode = vscode.CommentMode.Editing;
+            draft.comments = [focused];
+          }
+        }
+        return this.run(() => this.validateAnchors(document));
+      }),
       vscode.workspace.onDidChangeTextDocument((event) =>
         this.trackChanges(event),
       ),
@@ -265,9 +276,20 @@ export class NoteController implements vscode.Disposable {
     );
     thread.contextValue = "draft";
     thread.label = "Add a Ghost Comment";
-    thread.canReply = true;
+    // An editing comment receives native editor focus when the draft expands.
+    // An empty reply form can expand while keyboard focus stays in the source.
+    const draft = new NoteComment(
+      randomUUID(), "", vscode.workspace.getConfiguration("ghostComments").get<string>("authorName", "").trim() || "You",
+      thread, new Date().toISOString(), false,
+    );
+    draft.mode = vscode.CommentMode.Editing;
+    thread.canReply = false;
+    thread.comments = [draft];
+    // Expand after VS Code creates the input model: expanding before that
+    // lets the source editor reclaim focus while the widget is being laid out.
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
     this.drafts.add(thread);
+    this.draftAwaitingEditor = thread;
   }
 
   private async submitNote(reply: vscode.CommentReply): Promise<void> {
@@ -382,6 +404,10 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async saveNote(comment: NoteComment): Promise<void> {
+    if (this.drafts.has(comment.parent)) {
+      await this.submitNote({ thread: comment.parent, text: commentBodyText(comment.body) });
+      return;
+    }
     const binding = this.requireBinding(comment.parent);
     const body = commentBodyText(comment.body).trim();
     if (!body) {
@@ -406,6 +432,10 @@ export class NoteController implements vscode.Disposable {
   }
 
   private cancelEdit(comment: NoteComment): void {
+    if (this.drafts.has(comment.parent)) {
+      this.cancelNote({ thread: comment.parent, text: "" });
+      return;
+    }
     this.requireBinding(comment.parent);
     comment.restore();
     comment.parent.comments = [...comment.parent.comments];

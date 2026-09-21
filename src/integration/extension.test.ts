@@ -30,6 +30,47 @@ suite("Ghost Comments", () => {
   setup(cleanStorage);
   teardown(cleanStorage);
 
+  test("new draft takes typing focus without modifying source code", async () => {
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const editor = await vscode.window.showTextDocument(document);
+    const original = document.getText();
+    const controller = new NoteController();
+    controller["authorName"] = async () => "Focus Test";
+    try {
+      await controller.initialize();
+      editor.selection = new vscode.Selection(0, 0, 0, 6);
+      controller["createNote"]();
+      const draft = [...controller["drafts"]][0]!;
+      const comment = draft.comments[0] as NoteComment;
+      assert.equal(comment.mode, vscode.CommentMode.Editing);
+      // Allow the native comment widget to render, without clicking or moving focus.
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      console.log("FOCUS DEBUG", draft.collapsibleState, controller["draftAwaitingEditor"] !== undefined, vscode.workspace.textDocuments.map((d) => d.uri.toString()));
+      await vscode.commands.executeCommand("type", { text: "Typed into the note" });
+      assert.equal(document.getText(), original);
+      await vscode.commands.executeCommand("editor.action.submitComment");
+      for (let attempt = 0; attempt < 100 && controller["drafts"].size; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      assert.equal(controller["drafts"].size, 0);
+      const store = [...controller["stores"].values()][0]!;
+      assert.equal(store.all[0]!.body, "Typed into the note");
+      await vscode.window.showTextDocument(document);
+      controller["createNote"]();
+      const cancelled = [...controller["drafts"]][0]!;
+      controller["cancelEdit"](cancelled.comments[0] as NoteComment);
+      assert.equal(controller["drafts"].size, 0);
+      assert.equal(store.all.length, 1);
+    } finally {
+      controller.dispose();
+      if (document.getText() !== original) {
+        const restore = new vscode.WorkspaceEdit();
+        restore.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), original);
+        await vscode.workspace.applyEdit(restore);
+      }
+    }
+  });
+
   test("preserves detached discussions until explicit selection or line reattachment", async () => {
     const controller = new NoteController();
     controller["authorName"] = async () => "Integration Author";

@@ -139,12 +139,12 @@
         {
           "command": "ghostComments.editNote",
           "group": "navigation@1",
-          "when": "commentController == ghostComments"
+          "when": "commentController == ghostComments && commentThread != draft"
         },
         {
           "command": "ghostComments.deleteNote",
           "group": "navigation@2",
-          "when": "commentController == ghostComments"
+          "when": "commentController == ghostComments && commentThread != draft"
         }
       ],
       "comments/comment/context": [
