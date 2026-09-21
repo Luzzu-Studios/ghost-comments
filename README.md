@@ -39,9 +39,11 @@ The file contains a `schemaVersion` and deterministic note records. Each record 
 
 Ghost Comments stores both the original range and nearby text. When a document opens, it checks the original range and then searches for a unique contextual match if lines moved.
 
-If no safe match exists, the note becomes **stale**. The UI labels this **Code location missing — reattach note**. The note remains in the Comments panel without a misleading editor marker. Open the intended file, select its new anchor, and choose **Reattach Note** from the stale thread.
+If no safe match exists, the note becomes **detached** (stored as `stale`). The Comments panel labels it **Needs reattachment — Reattach…** without a misleading editor marker. Detached notes remain detached even after undo, restoring matching code, saving, or reopening the file.
 
-Deleting all the code covered by a note in an open editor immediately shows a warning offering **Delete Comments** or **Keep Comments**. Deleting comments removes the discussion and its replies; keeping or dismissing the warning preserves them for reattachment. Undoing the code deletion or pasting the code back before confirming restores its attachment. Ordinary text edits cannot be intercepted before they happen by the VS Code API, so this warning appears after the edit and before any comments are deleted. External edits still use the missing-location fallback.
+When code is deleted or missing anchors are discovered, a grouped prompt offers **Reattach…** or **Later**. Dismissing it preserves every comment and reply. Deletion remains a separate explicit action on the comment.
+
+Choose **Reattach Note** from the detached thread or Command Palette, then select code or place the cursor on a line in a file in the same workspace folder. Click **Attach here** in the reattachment notification to confirm the destination, or **Cancel** to leave the note detached. The status bar, editor context menu, and Command Palette also provide **Attach here**. A selection attaches exactly that range; a cursor attaches the entire current line. The comment opens at its new location. **Cancel Reattachment** leaves it detached, and errors preserve it for retry.
 
 File renames within the same workspace folder update note paths automatically. Moving a file between workspace folders is not automatic because each folder owns a separate notes file.
 
@@ -90,7 +92,7 @@ In the Extension Development Host:
 7. Run **Developer: Reload Window** and confirm the notes return.
 8. To test re-anchoring, insert lines above a note and save. Close and reopen the file; the note should follow its original code.
 9. To test stale handling, close the annotated file, change or remove its anchored text outside the Extension Development Host, then reopen it. The note should remain in the Comments panel as stale without a gutter marker.
-10. Select a new location and choose **Reattach Note** from the stale thread.
+10. Choose **Reattach Note**, select a new location, then choose **Attach here**. Repeat with only a cursor to verify whole-line attachment; cancel once to verify the note stays detached.
 
 Delete `test/fixtures/workspace/.gc` after manual testing if you do not want to keep the sandbox notes.
 

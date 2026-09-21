@@ -58,6 +58,18 @@
         "command": "ghostComments.replyNote",
         "title": "Reply",
         "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "ghostComments.attachHere",
+        "title": "Attach here",
+        "category": "Ghost Comments",
+        "enablement": "ghostComments.reattaching"
+      },
+      {
+        "command": "ghostComments.cancelReattach",
+        "title": "Cancel Reattachment",
+        "category": "Ghost Comments",
+        "enablement": "ghostComments.reattaching"
       }
     ],
     "keybindings": [
@@ -92,10 +104,6 @@
         },
         {
           "command": "ghostComments.deleteNote",
-          "when": "false"
-        },
-        {
-          "command": "ghostComments.reattachNote",
           "when": "false"
         },
         {
@@ -149,6 +157,13 @@
           "command": "ghostComments.saveNote",
           "group": "inline@2",
           "when": "commentController == ghostComments"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ghostComments.attachHere",
+          "when": "ghostComments.reattaching",
+          "group": "navigation"
         }
       ]
     },

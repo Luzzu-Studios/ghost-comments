@@ -25,35 +25,49 @@ export class NoteComment implements vscode.Comment {
     stale: boolean,
     readonly replyId?: string,
   ) {
-    this.body = safeMarkdown(body);
+    this.body = this.previewBody(body);
     this.savedBody = body;
     this.author = { name: author };
     this.timestamp = new Date(updatedAt);
     this.contextValue = stale ? "stale" : "active";
-    this.label = stale ? "code location missing" : undefined;
+    this.label = stale ? "⚠️ Needs reattachment" : undefined;
   }
 
-  update(body: string, author: string, updatedAt: string, stale: boolean): boolean {
+  update(
+    body: string,
+    author: string,
+    updatedAt: string,
+    stale: boolean,
+  ): boolean {
     const contextValue = stale ? "stale" : "active";
     const timestamp = new Date(updatedAt);
-    if (this.savedBody === body && this.author.name === author
-      && this.timestamp.getTime() === timestamp.getTime() && this.contextValue === contextValue) {
+    if (
+      this.savedBody === body &&
+      this.author.name === author &&
+      this.timestamp.getTime() === timestamp.getTime() &&
+      this.contextValue === contextValue
+    ) {
       return false;
     }
     this.savedBody = body;
     this.author = { name: author };
     this.timestamp = timestamp;
     this.contextValue = contextValue;
-    this.label = stale ? "code location missing" : undefined;
+    this.label = stale ? "⚠️ Needs reattachment" : undefined;
     // Updating another message or receiving a file change must not discard a draft.
     if (this.mode !== vscode.CommentMode.Editing) {
-      this.body = safeMarkdown(body);
+      this.body = this.previewBody(body);
     }
     return true;
   }
 
+  private previewBody(body: string): vscode.MarkdownString {
+    // The Comments panel renders the body preview, not the thread/comment label.
+    return safeMarkdown(body);
+  }
+
   restore(): void {
-    this.body = safeMarkdown(this.savedBody);
+    this.body = this.previewBody(this.savedBody);
     this.mode = vscode.CommentMode.Preview;
   }
 }
