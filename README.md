@@ -39,13 +39,17 @@ The file contains a `schemaVersion` and deterministic note records. Each record 
 
 Ghost Comments stores both the original range and nearby text. When a document opens, it checks the original range and then searches for a unique contextual match if lines moved.
 
-If no safe match exists, the note becomes **stale**. A stale note remains in the Comments panel without a misleading editor marker. Open the intended file, select its new anchor, and choose **Reattach Note** from the stale thread.
+If no safe match exists, the note becomes **stale**. The UI labels this **Code location missing — reattach note**. The note remains in the Comments panel without a misleading editor marker. Open the intended file, select its new anchor, and choose **Reattach Note** from the stale thread.
+
+Deleting all the code covered by a note in an open editor immediately shows a warning offering **Delete Comments** or **Keep Comments**. Deleting comments removes the discussion and its replies; keeping or dismissing the warning preserves them for reattachment. Undoing the code deletion or pasting the code back before confirming restores its attachment. Ordinary text edits cannot be intercepted before they happen by the VS Code API, so this warning appears after the edit and before any comments are deleted. External edits still use the missing-location fallback.
 
 File renames within the same workspace folder update note paths automatically. Moving a file between workspace folders is not automatic because each folder owns a separate notes file.
 
 ## Scope
 
-The MVP supports one durable note per anchor with create, edit, delete, and reattach actions. It deliberately does not include replies, resolved state, cloud synchronization, authentication, a custom sidebar, or a webview.
+Each anchored note supports Markdown replies, including replies to your own notes. Replies are stored with the note in `.gc/notes.json` and can be edited or deleted individually. Deleting the initial note deletes the entire discussion. All collaborators should use a reply-capable version of Ghost Comments before editing shared notes; older versions do not preserve replies.
+
+The MVP supports create, edit, delete, reply, and reattach actions. It deliberately does not include resolved state, cloud synchronization, authentication, a custom sidebar, or a webview.
 
 VS Code does not expose a general-purpose IntelliSense-style popup API for arbitrary extension input. Ghost Comments uses the supported native Comments API, which provides editor-anchored multiline input, theme integration, gutter indicators, and the Comments panel with minimal extension overhead.
 

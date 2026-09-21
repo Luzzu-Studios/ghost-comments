@@ -10,10 +10,10 @@ function safeMarkdown(body: string): vscode.MarkdownString {
 export class NoteComment implements vscode.Comment {
   body: vscode.MarkdownString;
   mode = vscode.CommentMode.Preview;
-  readonly author: vscode.CommentAuthorInformation;
-  readonly timestamp: Date;
-  readonly contextValue: "stale" | "active";
-  readonly label: string | undefined;
+  author: vscode.CommentAuthorInformation;
+  timestamp: Date;
+  contextValue: "stale" | "active";
+  label: string | undefined;
   savedBody: string;
 
   constructor(
@@ -23,13 +23,33 @@ export class NoteComment implements vscode.Comment {
     readonly parent: vscode.CommentThread,
     updatedAt: string,
     stale: boolean,
+    readonly replyId?: string,
   ) {
     this.body = safeMarkdown(body);
     this.savedBody = body;
     this.author = { name: author };
     this.timestamp = new Date(updatedAt);
     this.contextValue = stale ? "stale" : "active";
-    this.label = stale ? "stale anchor" : undefined;
+    this.label = stale ? "code location missing" : undefined;
+  }
+
+  update(body: string, author: string, updatedAt: string, stale: boolean): boolean {
+    const contextValue = stale ? "stale" : "active";
+    const timestamp = new Date(updatedAt);
+    if (this.savedBody === body && this.author.name === author
+      && this.timestamp.getTime() === timestamp.getTime() && this.contextValue === contextValue) {
+      return false;
+    }
+    this.savedBody = body;
+    this.author = { name: author };
+    this.timestamp = timestamp;
+    this.contextValue = contextValue;
+    this.label = stale ? "code location missing" : undefined;
+    // Updating another message or receiving a file change must not discard a draft.
+    if (this.mode !== vscode.CommentMode.Editing) {
+      this.body = safeMarkdown(body);
+    }
+    return true;
   }
 
   restore(): void {

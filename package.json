@@ -2,7 +2,7 @@
   "name": "ghost-comments",
   "displayName": "Ghost Comments",
   "description": "Attach durable, repository-shared notes to code.",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "publisher": "ghost-comments",
   "private": true,
   "engines": {
@@ -11,6 +11,7 @@
   "categories": [
     "Other"
   ],
+  "icon": "assets/256pxSolov4.png",
   "activationEvents": [
     "workspaceContains:**/.gc/notes.json"
   ],
@@ -52,6 +53,11 @@
       {
         "command": "ghostComments.reattachNote",
         "title": "Reattach Note"
+      },
+      {
+        "command": "ghostComments.replyNote",
+        "title": "Reply",
+        "enablement": "!commentIsEmpty"
       }
     ],
     "keybindings": [
@@ -91,6 +97,10 @@
         {
           "command": "ghostComments.reattachNote",
           "when": "false"
+        },
+        {
+          "command": "ghostComments.replyNote",
+          "when": "false"
         }
       ],
       "comments/commentThread/context": [
@@ -103,6 +113,11 @@
           "command": "ghostComments.cancelNote",
           "group": "inline@1",
           "when": "commentController == ghostComments && commentThreadIsEmpty"
+        },
+        {
+          "command": "ghostComments.replyNote",
+          "group": "inline@2",
+          "when": "commentController == ghostComments && !commentThreadIsEmpty"
         }
       ],
       "comments/commentThread/title": [

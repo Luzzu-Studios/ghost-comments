@@ -69,3 +69,19 @@ test("orders ties by start character and ID", () => {
   const c = { ...note("c"), range: { start: { line: 2, character: 1 }, end: { line: 2, character: 6 } } };
   assert.deepEqual(parseNoteFile(serializeNoteFile([c, b, a])).notes, [a, b, c]);
 });
+
+test("round-trips ordered Markdown replies from the original author", () => {
+  const original = note("thread");
+  const reply = { id: "reply-1", body: "**Follow-up**\n\n`code`", author: original.author, createdAt: timestamp, updatedAt: timestamp };
+  const thread = { ...original, replies: [reply, { ...reply, id: "reply-2" }] };
+  assert.deepEqual(parseNoteFile(serializeNoteFile([thread])).notes, [thread]);
+  assert.deepEqual(parseNoteFile(serializeNoteFile([original])).notes, [original]);
+});
+
+test("rejects malformed replies instead of silently dropping them", () => {
+  const reply = { id: "reply", body: "Reply", author: "Author", createdAt: timestamp, updatedAt: timestamp };
+  for (const replies of [null, {}, [null], [{ ...reply, body: " " }], [{ ...reply, author: "" }],
+    [{ ...reply, createdAt: "invalid" }], [{ ...reply, updatedAt: "invalid" }], [reply, reply], [{ ...reply, id: "thread" }]]) {
+    assert.throws(() => parseNoteFile(fileWith({ ...note("thread"), replies })));
+  }
+});

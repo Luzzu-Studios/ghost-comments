@@ -10,6 +10,7 @@ export class NoteStore implements vscode.Disposable {
   private readonly emitter = new vscode.EventEmitter<readonly StoredNote[]>();
   private readonly watcher: vscode.FileSystemWatcher;
   private writeQueue: Promise<void> = Promise.resolve();
+  private revision = 0;
   private ownWriteText: string | undefined;
   readonly onDidChange = this.emitter.event;
 
@@ -19,7 +20,7 @@ export class NoteStore implements vscode.Disposable {
     );
     this.watcher.onDidCreate(() => { void this.reload(); });
     this.watcher.onDidChange(() => { void this.reload(); });
-    this.watcher.onDidDelete(() => { this.replace([]); });
+    this.watcher.onDidDelete(() => { void this.reload(); });
   }
 
   get storageUri(): vscode.Uri {
@@ -45,6 +46,7 @@ export class NoteStore implements vscode.Disposable {
   }
 
   async upsert(note: StoredNote): Promise<void> {
+    this.revision++;
     this.notes.set(note.id, note);
     this.emitter.fire(this.all);
     await this.persist();
@@ -54,6 +56,7 @@ export class NoteStore implements vscode.Disposable {
     if (!this.notes.delete(noteId)) {
       return;
     }
+    this.revision++;
     this.emitter.fire(this.all);
     await this.persist();
   }
@@ -68,12 +71,15 @@ export class NoteStore implements vscode.Disposable {
       }
     }
     if (changed) {
+      this.revision++;
       this.emitter.fire(this.all);
       await this.persist();
     }
   }
 
   private replace(notes: readonly StoredNote[]): void {
+    this.revision++;
+    this.ownWriteText = undefined;
     this.notes = new Map(notes.map((note) => [note.id, note]));
     this.emitter.fire(this.all);
   }
@@ -92,14 +98,20 @@ export class NoteStore implements vscode.Disposable {
   }
 
   private async reload(): Promise<void> {
+    // Atomic replacement can emit a delete before the replacement file appears.
+    // Wait for our writes and ignore reads overtaken by a newer local mutation.
+    await this.writeQueue.catch(() => {});
+    const revision = this.revision;
     try {
       const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.storageUri));
-      if (text === this.ownWriteText) {
-        this.ownWriteText = undefined;
+      if (revision !== this.revision || text === this.ownWriteText) {
         return;
       }
       this.replace(parseNoteFile(text).notes);
     } catch (error) {
+      if (revision !== this.revision) {
+        return;
+      }
       if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
         this.replace([]);
         return;

@@ -16,7 +16,16 @@ export interface NoteAnchor {
   after: string[];
 }
 
+export interface StoredReply {
+  id: string;
+  body: string;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StoredNote {
+  replies?: StoredReply[];
   id: string;
   filePath: string;
   range: TextRange;
@@ -101,7 +110,35 @@ export function parseNoteFile(text: string): NoteFile {
       || !stringArray(anchor.before) || !stringArray(anchor.after)) {
       throw new Error(`Note ${index} has an invalid anchor.`);
     }
+    let replies: StoredReply[] | undefined;
+    if (value.replies !== undefined) {
+      if (!Array.isArray(value.replies)) {
+        throw new Error(`Note ${index} has invalid replies.`);
+      }
+      const replyIds = new Set<string>([id]);
+      replies = value.replies.map((reply: unknown): StoredReply => {
+        if (!isObject(reply)) {
+          throw new Error(`Note ${index} has an invalid reply.`);
+        }
+        const result: StoredReply = {
+          id: requiredString(reply.id, index, "reply id"),
+          body: requiredString(reply.body, index, "reply body"),
+          author: requiredString(reply.author, index, "reply author"),
+          createdAt: requiredString(reply.createdAt, index, "reply createdAt"),
+          updatedAt: requiredString(reply.updatedAt, index, "reply updatedAt"),
+        };
+        if (replyIds.has(result.id)) {
+          throw new Error(`Note ${index} reply IDs must be unique.`);
+        }
+        replyIds.add(result.id);
+        if (Number.isNaN(Date.parse(result.createdAt)) || Number.isNaN(Date.parse(result.updatedAt))) {
+          throw new Error(`Note ${index} has an invalid reply timestamp.`);
+        }
+        return result;
+      });
+    }
     return {
+      ...(replies === undefined ? {} : { replies }),
       id, filePath, range: { start, end },
       anchor: { text: anchor.text, before: anchor.before, after: anchor.after },
       body, author, createdAt, updatedAt, status: value.status,
