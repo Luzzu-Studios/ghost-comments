@@ -104,23 +104,38 @@ suite("Ghost Comments", () => {
       assert.equal(binding().store.all[0]!.status, "stale");
       assert.equal(binding().thread.range, undefined);
       const detachedComment = binding().thread.comments[0] as NoteComment;
-      assert.equal(detachedComment.label, "⚠️ Needs reattachment");
-      assert.equal(binding().thread.label, "⚠️ Detached");
-      assert.equal(detachedComment.body.value, "Initial note");
+      assert.equal(detachedComment.label, undefined);
+      assert.equal(binding().thread.label, "⚠️ Needs reattachment");
+      assert.equal(detachedComment.body.value, "Initial note ⚠️");
       assert.equal(binding().store.all[0]!.body, "Initial note");
       controller["editNote"](detachedComment);
       assert.equal(detachedComment.body.value, "Initial note");
       controller["cancelEdit"](detachedComment);
-      assert.equal(detachedComment.body.value, "Initial note");
+      assert.equal(detachedComment.body.value, "Initial note ⚠️");
       finishWarning!("Reattach…");
       await waitFor(() => attachmentPrompts.length === 1);
+      const detachedNoteId = binding().store.all[0]!.id;
+      await controller["replyNote"]({
+        thread: binding().thread,
+        text: "Reply while detached",
+      });
+      assert.equal(binding().store.all.length, 1);
+      assert.equal(binding().store.all[0]!.id, detachedNoteId);
+      assert.equal(binding().store.all[0]!.status, "stale");
+      assert.equal(binding().thread.range, undefined);
+      assert.equal(binding().thread.label, "⚠️ Needs reattachment");
+      assert.equal(binding().thread.comments.length, 3);
+      const detachedReply = binding().thread.comments[2] as NoteComment;
+      assert.equal(detachedReply.parent, binding().thread);
+      assert.equal(detachedReply.body.value, "Reply while detached");
+      assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached");
       const originalReplies = binding().store.all[0]!.replies;
       assert.equal(binding().store.all[0]!.status, "stale");
       attachmentPrompts[0]!("Cancel");
       await waitFor(() => controller["pendingAttachment"] === undefined);
       assert.equal(controller["pendingAttachment"], undefined);
       assert.equal(binding().store.all[0]!.status, "stale");
-      assert.equal(detachedComment.label, "⚠️ Needs reattachment");
+      assert.equal(detachedComment.label, undefined);
       await controller["reattachNote"](binding().thread);
       await waitFor(() => attachmentPrompts.length === 2);
       editor.selection = new vscode.Selection(0, 1, 0, 4);
@@ -142,7 +157,7 @@ suite("Ghost Comments", () => {
         vscode.CommentThreadCollapsibleState.Expanded,
       );
       assert.equal(detachedComment.label, undefined);
-      assert.equal(binding().thread.label, undefined);
+      assert.equal(binding().thread.label, "Discussion");
       assert.equal(detachedComment.body.value, "Initial note");
 
       // A cursor-only destination attaches the entire line.

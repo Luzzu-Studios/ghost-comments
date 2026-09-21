@@ -626,7 +626,9 @@ export class NoteController implements vscode.Disposable {
       if (thread.contextValue !== note.status) {
         thread.contextValue = note.status;
       }
-      const label = stale ? "⚠️ Detached" : undefined;
+      // VS Code only redraws an existing heading for a nonempty label.
+      // Clearing it with undefined leaves the old reattachment warning visible.
+      const label = stale ? "⚠️ Needs reattachment" : "Discussion";
       if (thread.label !== label) {
         thread.label = label;
       }

@@ -25,12 +25,12 @@ export class NoteComment implements vscode.Comment {
     stale: boolean,
     readonly replyId?: string,
   ) {
-    this.body = this.previewBody(body);
+    this.body = this.previewBody(body, stale);
     this.savedBody = body;
     this.author = { name: author };
     this.timestamp = new Date(updatedAt);
     this.contextValue = stale ? "stale" : "active";
-    this.label = stale ? "⚠️ Needs reattachment" : undefined;
+    this.label = undefined;
   }
 
   update(
@@ -53,21 +53,25 @@ export class NoteComment implements vscode.Comment {
     this.author = { name: author };
     this.timestamp = timestamp;
     this.contextValue = contextValue;
-    this.label = stale ? "⚠️ Needs reattachment" : undefined;
+    this.label = undefined;
     // Updating another message or receiving a file change must not discard a draft.
     if (this.mode !== vscode.CommentMode.Editing) {
-      this.body = this.previewBody(body);
+      this.body = this.previewBody(body, stale);
     }
     return true;
   }
 
-  private previewBody(body: string): vscode.MarkdownString {
-    // The Comments panel renders the body preview, not the thread/comment label.
-    return safeMarkdown(body);
+  private previewBody(body: string, stale: boolean): vscode.MarkdownString {
+    // VS Code owns the row's line-number metadata. Mark the first preview line
+    // instead, without adding the marker to stored text or editable drafts.
+    if (!stale || this.replyId) { return safeMarkdown(body); }
+    const newline = body.indexOf("\n");
+    const end = newline === -1 ? body.length : newline;
+    return safeMarkdown(`${body.slice(0, end)} ⚠️${body.slice(end)}`);
   }
 
   restore(): void {
-    this.body = this.previewBody(this.savedBody);
+    this.body = this.previewBody(this.savedBody, this.contextValue === "stale");
     this.mode = vscode.CommentMode.Preview;
   }
 }
