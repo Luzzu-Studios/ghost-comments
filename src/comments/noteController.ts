@@ -409,22 +409,34 @@ export class NoteController implements vscode.Disposable {
 
   private async pickTag(): Promise<string | null | undefined> {
     const definitions = configuredTags();
-    const selected = await vscode.window.showQuickPick(
-      [
-        ...definitions.map((tag) => ({
-          label: nativeTagLabel(tag.id, definitions)!,
-          description: tag.id,
-          tagId: tag.id as string | null,
-        })),
-        {
-          label: "$(circle-slash) Untagged",
-          description: "No category",
-          tagId: null,
-        },
-      ],
-      { placeHolder: "Choose an optional Ghost Comments tag" },
-    );
-    return selected?.tagId;
+    type TagPickItem = vscode.QuickPickItem & { tagId: string | null };
+    const untagged: TagPickItem = {
+      label: "Untagged",
+      description: "No category",
+      tagId: null,
+    };
+    const picker = vscode.window.createQuickPick<TagPickItem>();
+    picker.items = [
+      untagged,
+      ...definitions.map((tag) => ({
+        label: nativeTagLabel(tag.id, definitions)!,
+        description: tag.id,
+        tagId: tag.id,
+      })),
+    ];
+    picker.placeholder = "Choose an optional Ghost Comments tag";
+    picker.activeItems = [untagged];
+    return new Promise<string | null | undefined>((resolve) => {
+      picker.onDidAccept(() => {
+        resolve(picker.activeItems[0]?.tagId);
+        picker.hide();
+      });
+      picker.onDidHide(() => {
+        resolve(undefined);
+        picker.dispose();
+      });
+      picker.show();
+    });
   }
 
   private async targetBinding(

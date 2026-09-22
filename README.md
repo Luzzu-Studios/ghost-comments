@@ -14,9 +14,9 @@ Saved notes use VS Code's native gutter indicator and Comments panel. Open a not
 
 ## Tags and Tagged Comments
 
-When saving a new note, choose an optional category tag. Existing discussions can be changed with **Ghost Comments: Set Tag…** or **Clear Tag** from the comment or Command Palette. Tags categorize the entire discussion, including its replies.
+When saving a new note, choose an optional category tag. **Untagged** is the first and default choice, so pressing Enter in the tag picker saves the note without a tag. Use **Set Tag…** on an existing discussion to change its tag or choose **Untagged** to clear its assignment. The **Ghost Comments: Mark as Untagged** command remains available for existing shortcuts. Tags categorize the entire discussion, including its replies.
 
-Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note**. Selecting an active note opens and reveals its code; stale notes open their file without pointing at an unsafe range. The native Comments tab remains available and shows tags as colored emoji labels because VS Code does not expose per-comment colors or custom grouping there.
+Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note**, including an **Untagged** group. Selecting an active note opens and reveals its code; stale notes open their file without pointing at an unsafe range. The native Comments tab remains available and shows tags as colored emoji labels because VS Code does not expose per-comment colors or custom grouping there.
 
 The default tags are To Do, Question, Important, and Done. Customize their stable IDs, labels, colors, and order through **Preferences: Open Settings (JSON)**:
 

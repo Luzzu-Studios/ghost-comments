@@ -23,7 +23,7 @@
         {
           "id": "ghostComments",
           "title": "Ghost Comments",
-          "icon": "assets/ghost-comments-view-v2.svg"
+          "icon": "assets/ghost-comments-view-v3.svg"
         }
       ]
     },
@@ -97,9 +97,8 @@
       },
       {
         "command": "ghostComments.clearTag",
-        "title": "Clear Tag",
-        "category": "Ghost Comments",
-        "icon": "$(close)"
+        "title": "Mark as Untagged",
+        "category": "Ghost Comments"
       },
       {
         "command": "ghostComments.revealDiscussion",
@@ -177,11 +176,6 @@
           "command": "ghostComments.setTag",
           "group": "navigation@2",
           "when": "commentController == ghostComments && commentThread != draft"
-        },
-        {
-          "command": "ghostComments.clearTag",
-          "group": "navigation@3",
-          "when": "commentController == ghostComments && commentThread != draft"
         }
       ],
       "comments/comment/title": [
@@ -220,11 +214,6 @@
           "command": "ghostComments.setTag",
           "when": "view == ghostComments.tags && viewItem == ghostComments.note",
           "group": "inline@1"
-        },
-        {
-          "command": "ghostComments.clearTag",
-          "when": "view == ghostComments.tags && viewItem == ghostComments.note",
-          "group": "inline@2"
         }
       ]
     },
