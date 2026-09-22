@@ -1,0 +1,8 @@
+{
+  "ghostComments.tags": [
+    { "id": "todo", "label": "To Do", "color": "orange" },
+    { "id": "question", "label": "Question", "color": "blue" },
+    { "id": "important", "label": "Important", "color": "red" },
+    { "id": "done", "label": "Done", "color": "purple" }
+  ]
+}

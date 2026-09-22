@@ -96,6 +96,69 @@
         "icon": "$(tag)"
       },
       {
+        "command": "ghostComments.setTag.red",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/red.svg",
+          "dark": "assets/tag-icons/red.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.orange",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/orange.svg",
+          "dark": "assets/tag-icons/orange.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.yellow",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/yellow.svg",
+          "dark": "assets/tag-icons/yellow.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.green",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/green.svg",
+          "dark": "assets/tag-icons/green.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.blue",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/blue.svg",
+          "dark": "assets/tag-icons/blue.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.purple",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/purple.svg",
+          "dark": "assets/tag-icons/purple.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.gray",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/gray.svg",
+          "dark": "assets/tag-icons/gray.svg"
+        }
+      },
+      {
         "command": "ghostComments.clearTag",
         "title": "Mark as Untagged",
         "category": "Ghost Comments"
@@ -145,6 +208,34 @@
           "when": "false"
         },
         {
+          "command": "ghostComments.setTag.red",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.orange",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.yellow",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.green",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.blue",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.purple",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.gray",
+          "when": "false"
+        },
+        {
           "command": "ghostComments.revealDiscussion",
           "when": "false"
         }
@@ -170,12 +261,47 @@
         {
           "command": "ghostComments.reattachNote",
           "group": "navigation",
-          "when": "commentController == ghostComments && commentThread == stale"
+          "when": "commentController == ghostComments && commentThread =~ /^stale-/"
         },
         {
           "command": "ghostComments.setTag",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && commentThread != draft"
+          "when": "commentController == ghostComments && (commentThread == active-untagged || commentThread == stale-untagged)"
+        },
+        {
+          "command": "ghostComments.setTag.red",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-red || commentThread == stale-red)"
+        },
+        {
+          "command": "ghostComments.setTag.orange",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-orange || commentThread == stale-orange)"
+        },
+        {
+          "command": "ghostComments.setTag.yellow",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-yellow || commentThread == stale-yellow)"
+        },
+        {
+          "command": "ghostComments.setTag.green",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-green || commentThread == stale-green)"
+        },
+        {
+          "command": "ghostComments.setTag.blue",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-blue || commentThread == stale-blue)"
+        },
+        {
+          "command": "ghostComments.setTag.purple",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-purple || commentThread == stale-purple)"
+        },
+        {
+          "command": "ghostComments.setTag.gray",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-gray || commentThread == stale-gray)"
         }
       ],
       "comments/comment/title": [

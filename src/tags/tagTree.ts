@@ -10,6 +10,7 @@ import {
 } from "./tagConfiguration";
 import { displayTag } from "./tagDefinitions";
 import type { DisplayTag } from "./tagDefinitions";
+import type { StoredReply } from "../model/note";
 
 interface TagNode {
   kind: "tag";
@@ -29,7 +30,12 @@ interface NoteNode extends DiscussionReference {
   discussion: DiscussionSummary;
 }
 
-type TagTreeNode = TagNode | FileNode | NoteNode;
+interface ReplyNode extends DiscussionReference {
+  kind: "reply";
+  reply: StoredReply;
+}
+
+type TagTreeNode = TagNode | FileNode | NoteNode | ReplyNode;
 
 function notePreview(body: string): string {
   return body.split(/\r?\n/).find((line) => line.trim())?.trim()
@@ -51,6 +57,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
         element.tag.label,
         vscode.TreeItemCollapsibleState.Expanded,
       );
+      item.id = JSON.stringify(["tag", element.tag.id]);
       item.description = String(element.discussions.length);
       item.iconPath = new vscode.ThemeIcon("tag", tagThemeColor(element.tag.color));
       item.contextValue = "ghostComments.tag";
@@ -61,13 +68,35 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
         element.label,
         vscode.TreeItemCollapsibleState.Collapsed,
       );
+      const first = element.discussions[0]!;
+      item.id = JSON.stringify(["file", element.tag.id, first.workspaceUri, first.note.filePath]);
       item.description = String(element.discussions.length);
       item.iconPath = new vscode.ThemeIcon("file");
       item.contextValue = "ghostComments.file";
       return item;
     }
+    if (element.kind === "reply") {
+      const item = new vscode.TreeItem(notePreview(element.reply.body));
+      item.id = JSON.stringify(["reply", element.workspaceUri, element.noteId, element.reply.id]);
+      item.description = element.reply.author;
+      item.tooltip = new vscode.MarkdownString(element.reply.body);
+      item.iconPath = new vscode.ThemeIcon("comment");
+      item.contextValue = "ghostComments.reply";
+      item.command = {
+        command: "ghostComments.revealDiscussion",
+        title: "Open Ghost Comment",
+        arguments: [{ workspaceUri: element.workspaceUri, noteId: element.noteId }],
+      };
+      return item;
+    }
     const { note } = element.discussion;
-    const item = new vscode.TreeItem(notePreview(note.body));
+    const item = new vscode.TreeItem(
+      notePreview(note.body),
+      note.replies?.length
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    item.id = JSON.stringify(["note", element.workspaceUri, element.noteId]);
     item.description = `${note.author} · line ${note.range.start.line + 1}${
       note.status === "stale" ? " · stale" : ""
     }`;
@@ -119,6 +148,14 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
           noteId: discussion.noteId,
           discussion,
         }));
+    }
+    if (element.kind === "note") {
+      return (element.discussion.note.replies ?? []).map((reply): ReplyNode => ({
+        kind: "reply",
+        workspaceUri: element.workspaceUri,
+        noteId: element.noteId,
+        reply,
+      }));
     }
     return [];
   }

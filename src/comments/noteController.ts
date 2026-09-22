@@ -6,8 +6,8 @@ import { captureAnchor, reanchor } from "../anchors/reanchor";
 import type { StoredNote, TextRange } from "../model/note";
 import { NoteStore } from "../storage/noteStore";
 import type { BackupState } from "../storage/noteStore";
-import { configuredTags } from "../tags/tagConfiguration";
-import { nativeTagLabel } from "../tags/tagDefinitions";
+import { configuredTags, tagPickerIcon } from "../tags/tagConfiguration";
+import { displayTag, nativeTagLabel, TAG_COLORS } from "../tags/tagDefinitions";
 import { commentBodyText, NoteComment } from "./noteComment";
 
 interface Binding {
@@ -96,7 +96,11 @@ export class NoteController implements vscode.Disposable {
   private readonly discussionsEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeDiscussions = this.discussionsEmitter.event;
 
-  constructor(private readonly backupState?: BackupState) {
+  constructor(
+    private readonly backupState?: BackupState,
+    private readonly extensionUri?: vscode.Uri,
+    registerCommands = true,
+  ) {
     this.controller = vscode.comments.createCommentController(
       "ghostComments",
       "Ghost Comments",
@@ -113,59 +117,70 @@ export class NoteController implements vscode.Disposable {
       "Select code or place the cursor on a line, then click to attach the detached note.";
     this.attachmentStatus.command = "ghostComments.attachHere";
     this.subscriptions.push(this.controller, this.attachmentStatus);
+    if (registerCommands) {
+      this.subscriptions.push(
+        vscode.commands.registerCommand("ghostComments.createNote", () =>
+          this.run(() => this.createNote()),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.submitNote",
+          (reply: vscode.CommentReply) => this.run(() => this.submitNote(reply)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.replyNote",
+          (reply: vscode.CommentReply) => this.run(() => this.replyNote(reply)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.cancelNote",
+          (reply: vscode.CommentReply) => this.run(() => this.cancelNote(reply)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.editNote",
+          (comment: NoteComment) => this.run(() => this.editNote(comment)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.saveNote",
+          (comment: NoteComment) => this.run(() => this.saveNote(comment)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.cancelEdit",
+          (comment: NoteComment) => this.run(() => this.cancelEdit(comment)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.deleteNote",
+          (comment: NoteComment) => this.run(() => this.deleteNote(comment)),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.reattachNote",
+          (thread: vscode.CommentThread) =>
+            this.run(() => this.reattachNote(thread)),
+        ),
+        vscode.commands.registerCommand("ghostComments.attachHere", () =>
+          this.run(() => this.attachHere()),
+        ),
+        vscode.commands.registerCommand("ghostComments.cancelReattach", () =>
+          this.cancelReattach(),
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.setTag",
+          (target?: vscode.CommentThread | DiscussionReference) =>
+            this.run(() => this.setTag(target)),
+        ),
+        ...TAG_COLORS.map((color) =>
+          vscode.commands.registerCommand(
+            `ghostComments.setTag.${color}`,
+            (target?: vscode.CommentThread | DiscussionReference) =>
+              this.run(() => this.setTag(target)),
+          )
+        ),
+        vscode.commands.registerCommand(
+          "ghostComments.clearTag",
+          (target?: vscode.CommentThread | DiscussionReference) =>
+            this.run(() => this.clearTag(target)),
+        ),
+      );
+    }
     this.subscriptions.push(
-      vscode.commands.registerCommand("ghostComments.createNote", () =>
-        this.run(() => this.createNote()),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.submitNote",
-        (reply: vscode.CommentReply) => this.run(() => this.submitNote(reply)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.replyNote",
-        (reply: vscode.CommentReply) => this.run(() => this.replyNote(reply)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.cancelNote",
-        (reply: vscode.CommentReply) => this.run(() => this.cancelNote(reply)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.editNote",
-        (comment: NoteComment) => this.run(() => this.editNote(comment)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.saveNote",
-        (comment: NoteComment) => this.run(() => this.saveNote(comment)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.cancelEdit",
-        (comment: NoteComment) => this.run(() => this.cancelEdit(comment)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.deleteNote",
-        (comment: NoteComment) => this.run(() => this.deleteNote(comment)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.reattachNote",
-        (thread: vscode.CommentThread) =>
-          this.run(() => this.reattachNote(thread)),
-      ),
-      vscode.commands.registerCommand("ghostComments.attachHere", () =>
-        this.run(() => this.attachHere()),
-      ),
-      vscode.commands.registerCommand("ghostComments.cancelReattach", () =>
-        this.cancelReattach(),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.setTag",
-        (target?: vscode.CommentThread | DiscussionReference) =>
-          this.run(() => this.setTag(target)),
-      ),
-      vscode.commands.registerCommand(
-        "ghostComments.clearTag",
-        (target?: vscode.CommentThread | DiscussionReference) =>
-          this.run(() => this.clearTag(target)),
-      ),
       vscode.workspace.onDidOpenTextDocument((document) => {
         if (document.uri.scheme === "comment" && this.draftAwaitingEditor) {
           const draft = this.draftAwaitingEditor;
@@ -421,6 +436,9 @@ export class NoteController implements vscode.Disposable {
       ...definitions.map((tag) => ({
         label: nativeTagLabel(tag.id, definitions)!,
         description: tag.id,
+        iconPath: this.extensionUri
+          ? tagPickerIcon(this.extensionUri, tag.color)
+          : new vscode.ThemeIcon("tag"),
         tagId: tag.id,
       })),
     ];
@@ -505,6 +523,7 @@ export class NoteController implements vscode.Disposable {
     if (!binding) {
       return;
     }
+    binding.thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
     const document = await vscode.workspace.openTextDocument(binding.thread.uri);
     const editor = await vscode.window.showTextDocument(document);
     if (binding.note.status === "active") {
@@ -823,12 +842,15 @@ export class NoteController implements vscode.Disposable {
         thread.range = stale ? undefined : editorRange(note.range);
         this.tracked.delete(key);
       }
-      if (thread.contextValue !== note.status) {
-        thread.contextValue = note.status;
+      const tag = displayTag(note.tag, tagDefinitions);
+      const contextValue = `${note.status}-${tag.untagged ? "untagged" : tag.color}`;
+      if (thread.contextValue !== contextValue) {
+        thread.contextValue = contextValue;
       }
       // VS Code only redraws an existing heading for a nonempty label.
       // Clearing it with undefined leaves the old reattachment warning visible.
-      const label = stale ? "⚠️ Needs reattachment" : "Discussion";
+      const heading = stale ? "⚠️ Needs reattachment" : "Discussion";
+      const label = tag.untagged ? heading : `${heading} · ${tag.label}`;
       if (thread.label !== label) {
         thread.label = label;
       }
@@ -840,9 +862,6 @@ export class NoteController implements vscode.Disposable {
       );
       let changed = false;
       const comments = [note, ...(note.replies ?? [])].map((message, index) => {
-        const label = index === 0
-          ? nativeTagLabel(note.tag, tagDefinitions)
-          : undefined;
         const comment = existing.get(message.id);
         if (comment) {
           changed =
@@ -851,7 +870,6 @@ export class NoteController implements vscode.Disposable {
               message.author,
               message.updatedAt,
               stale,
-              label,
             ) || changed;
           return comment;
         }
@@ -864,7 +882,6 @@ export class NoteController implements vscode.Disposable {
           message.updatedAt,
           stale,
           index === 0 ? undefined : message.id,
-          label,
         );
       });
       if (

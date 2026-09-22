@@ -24,3 +24,7 @@ export function configuredTags(): TagDefinition[] {
 export function tagThemeColor(color: TagColor): vscode.ThemeColor {
   return new vscode.ThemeColor(THEME_COLORS[color]);
 }
+
+export function tagPickerIcon(extensionUri: vscode.Uri, color: TagColor): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "assets", "tag-icons", `${color}.svg`);
+}

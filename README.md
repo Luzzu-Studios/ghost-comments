@@ -16,7 +16,7 @@ Saved notes use VS Code's native gutter indicator and Comments panel. Open a not
 
 When saving a new note, choose an optional category tag. **Untagged** is the first and default choice, so pressing Enter in the tag picker saves the note without a tag. Use **Set Tag…** on an existing discussion to change its tag or choose **Untagged** to clear its assignment. The **Ghost Comments: Mark as Untagged** command remains available for existing shortcuts. Tags categorize the entire discussion, including its replies.
 
-Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note**, including an **Untagged** group. Selecting an active note opens and reveals its code; stale notes open their file without pointing at an unsafe range. The native Comments tab remains available and shows tags as colored emoji labels because VS Code does not expose per-comment colors or custom grouping there.
+Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note → replies**, including an **Untagged** group. Expand a note to see its replies in order; selecting a note or reply opens its code and expands the native discussion. Stale notes open their file without pointing at an unsafe range. The sidebar uses theme-colored tag icons, and the tag picker shows colored tag icons. Tagged native discussions show the tag name in the heading and a colored tag icon on the **Set Tag** action.
 
 The default tags are To Do, Question, Important, and Done. Customize their stable IDs, labels, colors, and order through **Preferences: Open Settings (JSON)**:
 
@@ -61,7 +61,7 @@ The file contains a `schemaVersion` and deterministic note records. Each record 
 
 Ghost Comments stores both the original range and nearby text. When a document opens, it checks the original range and then searches for a unique contextual match if lines moved.
 
-If no safe match exists, the note becomes **detached** (stored as `stale`). The Comments panel labels it **Needs reattachment — Reattach…** without a misleading editor marker. Detached notes remain detached even after undo, restoring matching code, saving, or reopening the file.
+If no safe match exists, the note becomes **detached** (stored as `stale`). The Comments panel heading shows **Needs reattachment**, followed by the tag name when tagged, without a misleading editor marker. Detached notes remain detached even after undo, restoring matching code, saving, or reopening the file.
 
 When code is deleted or missing anchors are discovered, a grouped prompt offers **Reattach…** or **Later**. Dismissing it preserves every comment and reply. Deletion remains a separate explicit action on the comment.
 
@@ -93,7 +93,7 @@ npm run build
 
 ### Manual sandbox
 
-Run `npm run sandbox` to build the extension and open `sample.ts` in a separate VS Code window. The script downloads or reuses the same VS Code runtime as the integration tests, but runs no tests and stays open until you close the window. Sandbox settings and extensions are isolated under `.vscode-test/`; notes persist in `test/fixtures/workspace/.gc/notes.json`.
+Run `npm run sandbox` to build the extension and open `sample.ts` in a separate VS Code window. The script downloads or reuses the same VS Code runtime as the integration tests, but runs no tests and stays open until you close the window. Edit `test/fixtures/workspace/.vscode/settings.json` to customize `ghostComments.tags` in the sandbox; changes apply without editing the extension's `package.json`. The sandbox user profile and extensions are isolated under `.vscode-test/`, while notes persist in `test/fixtures/workspace/.gc/notes.json`.
 
 The **Run Ghost Comments (Sandbox)** launch profile opens `test/fixtures/workspace` in a separate Extension Development Host with other extensions disabled.
 

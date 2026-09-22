@@ -28,16 +28,6 @@ export const DEFAULT_TAGS: readonly TagDefinition[] = [
   { id: "done", label: "Done", color: "green" },
 ];
 
-const COLOR_EMOJI: Record<TagColor, string> = {
-  red: "🔴",
-  orange: "🟠",
-  yellow: "🟡",
-  green: "🟢",
-  blue: "🔵",
-  purple: "🟣",
-  gray: "⚪",
-};
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -91,5 +81,5 @@ export function nativeTagLabel(
     return undefined;
   }
   const tag = displayTag(tagId, definitions);
-  return `${COLOR_EMOJI[tag.color]} ${tag.label}`;
+  return tag.label;
 }

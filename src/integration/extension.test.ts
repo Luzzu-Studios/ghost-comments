@@ -7,6 +7,8 @@ import type { NoteComment } from "../comments/noteComment";
 import { NoteStore } from "../storage/noteStore";
 import type { BackupState } from "../storage/noteStore";
 import { TagTreeProvider } from "../tags/tagTree";
+import { tagPickerIcon } from "../tags/tagConfiguration";
+import { TAG_COLORS } from "../tags/tagDefinitions";
 
 suite("Ghost Comments", () => {
   const folder = vscode.workspace.workspaceFolders![0]!;
@@ -45,11 +47,23 @@ suite("Ghost Comments", () => {
   setup(cleanStorage);
   teardown(cleanStorage);
 
+  test("provides colored tag icons for the picker", async () => {
+    const extension = vscode.extensions.getExtension("ghost-comments.ghost-comments");
+    assert.ok(extension);
+    for (const color of TAG_COLORS) {
+      const svg = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(tagPickerIcon(extension.extensionUri, color)),
+      );
+      assert.match(svg, /<svg\b/);
+      assert.match(svg, /stroke="#[0-9a-f]{6}"/);
+    }
+  });
+
   test("new draft takes typing focus without modifying source code", async () => {
     const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
     const editor = await vscode.window.showTextDocument(document);
     const original = document.getText();
-    const controller = new NoteController();
+    const controller = new NoteController(undefined, undefined, false);
     controller["authorName"] = async () => "Focus Test";
     controller["pickTag"] = async () => null;
     try {
@@ -64,7 +78,11 @@ suite("Ghost Comments", () => {
       console.log("FOCUS DEBUG", draft.collapsibleState, controller["draftAwaitingEditor"] !== undefined, vscode.workspace.textDocuments.map((d) => d.uri.toString()));
       await vscode.commands.executeCommand("type", { text: "Typed into the note" });
       assert.equal(document.getText(), original);
-      await vscode.commands.executeCommand("editor.action.submitComment");
+      const commentDocument = vscode.workspace.textDocuments.find((entry) =>
+        entry.uri.scheme === "comment" && entry.getText() === "Typed into the note"
+      );
+      assert.ok(commentDocument);
+      await controller["submitNote"]({ thread: draft, text: commentDocument.getText() });
       for (let attempt = 0; attempt < 100 && controller["drafts"].size; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
@@ -88,7 +106,7 @@ suite("Ghost Comments", () => {
   });
 
   test("preserves detached discussions until explicit selection or line reattachment", async () => {
-    const controller = new NoteController();
+    const controller = new NoteController(undefined, undefined, false);
     controller["authorName"] = async () => "Integration Author";
     controller["pickTag"] = async () => "todo";
     const attachmentPrompts: ((choice: string | undefined) => void)[] = [];
@@ -129,7 +147,9 @@ suite("Ghost Comments", () => {
       await controller["submitNote"]({ thread: draft, text: "Initial note" });
       const binding = () => [...controller["bindings"].values()][0]!;
       assert.equal(binding().store.all[0]!.tag, "todo");
-      assert.equal((binding().thread.comments[0] as NoteComment).label, "🟠 To Do");
+      assert.equal(binding().thread.label, "Discussion · To Do");
+      assert.equal(binding().thread.contextValue, "active-orange");
+      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
       const tagTree = new TagTreeProvider(controller);
       try {
         const tagNodes = tagTree.getChildren();
@@ -167,10 +187,14 @@ suite("Ghost Comments", () => {
       controller["pickTag"] = async () => "question";
       await controller["setTag"](binding().thread);
       assert.equal(binding().store.all[0]!.tag, "question");
-      assert.equal((binding().thread.comments[0] as NoteComment).label, "🔵 Question");
+      assert.equal(binding().thread.label, "Discussion · Question");
+      assert.equal(binding().thread.contextValue, "active-blue");
+      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
       assert.notEqual(binding().store.all[0]!.updatedAt, originalUpdatedAt);
       await controller["clearTag"](binding().thread);
       assert.equal(binding().store.all[0]!.tag, undefined);
+      assert.equal(binding().thread.label, "Discussion");
+      assert.equal(binding().thread.contextValue, "active-untagged");
       assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
       originalUpdatedAt = binding().store.all[0]!.updatedAt;
       await controller["replyNote"]({
@@ -189,6 +213,26 @@ suite("Ghost Comments", () => {
       await controller["saveNote"](reply);
       assert.equal(binding().store.all[0]!.body, "Initial note");
       assert.equal(binding().store.all[0]!.replies![0]!.body, "Edited reply");
+      let firstReplyTreeId: string | undefined;
+      const repliesTree = new TagTreeProvider(controller);
+      try {
+        const tagNode = repliesTree.getChildren()[0]!;
+        const fileNode = repliesTree.getChildren(tagNode)[0]!;
+        const noteNode = repliesTree.getChildren(fileNode)[0]!;
+        const noteItem = repliesTree.getTreeItem(noteNode);
+        assert.equal(noteItem.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
+        const replyNodes = repliesTree.getChildren(noteNode);
+        assert.equal(replyNodes.length, 1);
+        const replyItem = repliesTree.getTreeItem(replyNodes[0]!);
+        firstReplyTreeId = replyItem.id;
+        assert.equal(replyItem.label, "Edited reply");
+        assert.equal(replyItem.description, "Integration Author");
+        assert.equal((replyItem.tooltip as vscode.MarkdownString).value, "Edited reply");
+        await controller.revealDiscussion(replyItem.command!.arguments![0]);
+        assert.equal(binding().thread.collapsibleState, vscode.CommentThreadCollapsibleState.Expanded);
+      } finally {
+        repliesTree.dispose();
+      }
       const range = binding().thread.range!;
       const deletedText = document.getText(range);
       const edit = new vscode.WorkspaceEdit();
@@ -196,6 +240,7 @@ suite("Ghost Comments", () => {
       await vscode.workspace.applyEdit(edit);
       await waitFor(() => finishWarning !== undefined);
       assert.equal(binding().store.all[0]!.status, "stale");
+      assert.equal(binding().thread.contextValue, "stale-untagged");
       assert.equal(binding().store.all[0]!.updatedAt, originalUpdatedAt);
       await controller["refreshAnchors"](document);
       assert.equal(binding().store.all[0]!.anchor.text, deletedText);
@@ -220,7 +265,7 @@ suite("Ghost Comments", () => {
       const detachedNoteId = binding().store.all[0]!.id;
       await controller["replyNote"]({
         thread: binding().thread,
-        text: "Reply while detached",
+        text: "Reply while detached\nMore detail",
       });
       assert.equal(binding().store.all.length, 1);
       assert.equal(binding().store.all[0]!.id, detachedNoteId);
@@ -230,8 +275,28 @@ suite("Ghost Comments", () => {
       assert.equal(binding().thread.comments.length, 3);
       const detachedReply = binding().thread.comments[2] as NoteComment;
       assert.equal(detachedReply.parent, binding().thread);
-      assert.equal(detachedReply.body.value, "Reply while detached");
-      assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached");
+      assert.equal(detachedReply.body.value, "Reply while detached\nMore detail");
+      assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached\nMore detail");
+      const updatedTree = new TagTreeProvider(controller);
+      try {
+        const tagNode = updatedTree.getChildren()[0]!;
+        const fileNode = updatedTree.getChildren(tagNode)[0]!;
+        const noteNode = updatedTree.getChildren(fileNode)[0]!;
+        const replyNodes = updatedTree.getChildren(noteNode);
+        assert.deepEqual(replyNodes.map((node) => updatedTree.getTreeItem(node).label), [
+          "Edited reply",
+          "Reply while detached",
+        ]);
+        assert.equal(updatedTree.getTreeItem(replyNodes[0]!).id, firstReplyTreeId);
+        assert.equal(
+          (updatedTree.getTreeItem(replyNodes[1]!).tooltip as vscode.MarkdownString).value,
+          "Reply while detached\nMore detail",
+        );
+      } finally {
+        updatedTree.dispose();
+      }
+      await controller.revealDiscussion({ workspaceUri: folder.uri.toString(), noteId: detachedNoteId });
+      assert.equal(binding().thread.collapsibleState, vscode.CommentThreadCollapsibleState.Expanded);
       const originalReplies = binding().store.all[0]!.replies;
       assert.equal(binding().store.all[0]!.status, "stale");
       attachmentPrompts[0]!("Cancel");
@@ -324,7 +389,7 @@ suite("Ghost Comments", () => {
   });
 
   test("groups missing anchors and keeps persisted detached notes detached on reload", async () => {
-    const controller = new NoteController();
+    const controller = new NoteController(undefined, undefined, false);
     controller["pickTag"] = async () => null;
     const prompts: number[] = [];
     controller["warnAboutDeletedCode"] = async (count) => {
@@ -396,6 +461,9 @@ suite("Ghost Comments", () => {
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes("ghostComments.createNote"));
     assert.ok(commands.includes("ghostComments.setTag"));
+    for (const color of TAG_COLORS) {
+      assert.ok(commands.includes(`ghostComments.setTag.${color}`));
+    }
     assert.ok(commands.includes("ghostComments.clearTag"));
     assert.ok(commands.includes("ghostComments.revealDiscussion"));
     const document = await vscode.workspace.openTextDocument(

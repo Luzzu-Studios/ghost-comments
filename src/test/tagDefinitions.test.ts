@@ -42,6 +42,6 @@ test("resolves configured, unknown, and untagged display values", () => {
     color: "gray",
     untagged: true,
   });
-  assert.equal(nativeTagLabel("review", definitions), "🟣 Review");
+  assert.equal(nativeTagLabel("review", definitions), "Review");
   assert.equal(nativeTagLabel(undefined, definitions), undefined);
 });
