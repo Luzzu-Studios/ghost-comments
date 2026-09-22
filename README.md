@@ -14,11 +14,11 @@ Saved notes use VS Code's native gutter indicator and Comments panel. Open a not
 
 ## Tags and Tagged Comments
 
-When saving a new note, choose an optional category tag. **Untagged** is the first and default choice, so pressing Enter in the tag picker saves the note without a tag. Use **Set Tag…** on an existing discussion to change its tag or choose **Untagged** to clear its assignment. The **Ghost Comments: Mark as Untagged** command remains available for existing shortcuts. Tags categorize the entire discussion, including its replies.
+When saving a new note, choose an optional category tag. **Untagged** is the first and default choice, so pressing Enter in the tag picker saves the note without a tag. Choose **Create New Tag…** at the end of the picker to enter a name and select one of seven colors; the new tag is added to workspace settings and applied to the note immediately. Cancelling the name or color step returns to the tag picker. Closing the tag picker keeps a new note as an unsaved draft. Use **Set Tag…** on an existing discussion to change its tag, create one, or choose **Untagged** to clear its assignment. The **Ghost Comments: Mark as Untagged** command remains available for existing shortcuts. Tags categorize the entire discussion, including its replies.
 
 Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note → replies**, including an **Untagged** group. Expand a note to see its replies in order; selecting a note or reply opens its code and expands the native discussion. Stale notes open their file without pointing at an unsafe range. The sidebar uses theme-colored tag icons, and the tag picker shows colored tag icons. Tagged native discussions show the tag name in the heading and a colored tag icon on the **Set Tag** action.
 
-The default tags are To Do, Question, Important, and Done. Customize their stable IDs, labels, colors, and order through **Preferences: Open Settings (JSON)**:
+The default tags are To Do, Question, Important, and Done. New tags created in the picker are saved in the workspace's `ghostComments.tags` setting. To rename, recolor, reorder, or remove tag definitions, use **Preferences: Open Settings (JSON)**:
 
 ```json
 "ghostComments.tags": [

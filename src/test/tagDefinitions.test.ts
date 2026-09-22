@@ -4,13 +4,29 @@ import {
   DEFAULT_TAGS,
   displayTag,
   nativeTagLabel,
+  newTagId,
   parseTagDefinitions,
+  tagNameExists,
 } from "../tags/tagDefinitions";
 
 test("uses defaults only when the tag setting is not an array", () => {
   assert.deepEqual(parseTagDefinitions(undefined), DEFAULT_TAGS);
   assert.deepEqual(parseTagDefinitions({}), DEFAULT_TAGS);
   assert.deepEqual(parseTagDefinitions([]), []);
+});
+
+test("creates stable unique IDs and rejects duplicate names", () => {
+  const definitions = [
+    { id: "review", label: "Review", color: "purple" },
+    { id: "review-2", label: "Another", color: "red" },
+    { id: "tag", label: "Misc", color: "gray" },
+  ] as const;
+  assert.equal(tagNameExists(" review ", definitions), true);
+  assert.equal(tagNameExists("REVIEW", definitions), true);
+  assert.equal(tagNameExists("Fresh", definitions), false);
+  assert.equal(newTagId("Review", definitions), "review-3");
+  assert.equal(newTagId("Café & Notes", definitions), "cafe-notes");
+  assert.equal(newTagId("✨", definitions), "tag-2");
 });
 
 test("validates tag definitions and keeps the first duplicate in order", () => {

@@ -7,7 +7,8 @@ import type { StoredNote, TextRange } from "../model/note";
 import { NoteStore } from "../storage/noteStore";
 import type { BackupState } from "../storage/noteStore";
 import { configuredTags, tagPickerIcon } from "../tags/tagConfiguration";
-import { displayTag, nativeTagLabel, TAG_COLORS } from "../tags/tagDefinitions";
+import { DEFAULT_TAGS, displayTag, nativeTagLabel, newTagId, parseTagDefinitions, tagNameExists, TAG_COLORS } from "../tags/tagDefinitions";
+import type { TagColor, TagDefinition } from "../tags/tagDefinitions";
 import { commentBodyText, NoteComment } from "./noteComment";
 
 interface Binding {
@@ -382,6 +383,15 @@ export class NoteController implements vscode.Disposable {
     const range = storedRange(thread.range);
     const now = new Date().toISOString();
     const selectedTag = await this.pickTag();
+    if (selectedTag === undefined) {
+      const draft = thread.comments[0] as NoteComment;
+      draft.savedBody = body;
+      draft.body = new vscode.MarkdownString(body);
+      draft.mode = vscode.CommentMode.Editing;
+      thread.comments = [draft];
+      thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+      return;
+    }
     const note: StoredNote = {
       ...(selectedTag ? { tag: selectedTag } : {}),
       id: randomUUID(),
@@ -423,30 +433,52 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async pickTag(): Promise<string | null | undefined> {
+    for (;;) {
+      const choice = await this.showTagPicker();
+      if (!choice) {
+        return undefined;
+      }
+      if (choice.kind === "tag") {
+        return choice.tagId;
+      }
+      const created = await this.createTag();
+      if (created) {
+        return created;
+      }
+    }
+  }
+
+  private async showTagPicker(): Promise<
+    { kind: "tag"; tagId: string | null } | { kind: "create" } | undefined
+  > {
+    type TagPickItem = vscode.QuickPickItem & (
+      { choiceType: "tag"; tagId: string | null } | { choiceType: "create" }
+    );
     const definitions = configuredTags();
-    type TagPickItem = vscode.QuickPickItem & { tagId: string | null };
     const untagged: TagPickItem = {
-      label: "Untagged",
-      description: "No category",
-      tagId: null,
+      choiceType: "tag", tagId: null, label: "Untagged", description: "No category",
     };
     const picker = vscode.window.createQuickPick<TagPickItem>();
     picker.items = [
       untagged,
-      ...definitions.map((tag) => ({
+      ...definitions.map((tag): TagPickItem => ({
+        choiceType: "tag", tagId: tag.id,
         label: nativeTagLabel(tag.id, definitions)!,
         description: tag.id,
         iconPath: this.extensionUri
           ? tagPickerIcon(this.extensionUri, tag.color)
           : new vscode.ThemeIcon("tag"),
-        tagId: tag.id,
       })),
+      { choiceType: "create", label: "$(add) Create New Tag…" },
     ];
     picker.placeholder = "Choose an optional Ghost Comments tag";
     picker.activeItems = [untagged];
-    return new Promise<string | null | undefined>((resolve) => {
+    return new Promise((resolve) => {
       picker.onDidAccept(() => {
-        resolve(picker.activeItems[0]?.tagId);
+        const selected = picker.activeItems[0];
+        resolve(selected?.choiceType === "tag"
+          ? { kind: "tag", tagId: selected.tagId }
+          : selected?.choiceType === "create" ? { kind: "create" } : undefined);
         picker.hide();
       });
       picker.onDidHide(() => {
@@ -455,6 +487,77 @@ export class NoteController implements vscode.Disposable {
       });
       picker.show();
     });
+  }
+
+  private async createTag(): Promise<string | undefined> {
+    const name = await this.promptTagName();
+    if (name === undefined) {
+      return undefined;
+    }
+    const label = name.trim();
+    if (!label || tagNameExists(label, configuredTags())) {
+      void vscode.window.showErrorMessage("Enter a unique tag name.");
+      return undefined;
+    }
+    const color = await this.pickTagColor();
+    if (!color) {
+      return undefined;
+    }
+    const configuration = vscode.workspace.getConfiguration("ghostComments");
+    const current = configuration.get<unknown>("tags", DEFAULT_TAGS);
+    const definitions = parseTagDefinitions(current);
+    if (tagNameExists(label, definitions)) {
+      void vscode.window.showErrorMessage("A tag with this name already exists.");
+      return undefined;
+    }
+    const tag: TagDefinition = { id: newTagId(label, definitions), label, color };
+    try {
+      await this.saveTagDefinition(
+        [...(Array.isArray(current) ? current : definitions), tag],
+      );
+    } catch (error) {
+      void vscode.window.showErrorMessage(
+        `Could not create tag: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return undefined;
+    }
+    return tag.id;
+  }
+
+  private promptTagName(): Thenable<string | undefined> {
+    return vscode.window.showInputBox({
+      prompt: "Name the new Ghost Comments tag",
+      placeHolder: "Tag name",
+      validateInput: (value) => {
+        if (!value.trim()) {
+          return "Enter a tag name.";
+        }
+        if (tagNameExists(value, configuredTags())) {
+          return "A tag with this name already exists.";
+        }
+        return undefined;
+      },
+    });
+  }
+
+  private async saveTagDefinition(definitions: unknown[]): Promise<void> {
+    await vscode.workspace.getConfiguration("ghostComments").update(
+      "tags", definitions, vscode.ConfigurationTarget.Workspace,
+    );
+  }
+
+  private async pickTagColor(): Promise<TagColor | undefined> {
+    const selected = await vscode.window.showQuickPick(
+      TAG_COLORS.map((color) => ({
+        label: color[0]!.toUpperCase() + color.slice(1),
+        iconPath: this.extensionUri
+          ? tagPickerIcon(this.extensionUri, color)
+          : new vscode.ThemeIcon("tag"),
+        color,
+      })),
+      { placeHolder: "Choose a color for the new tag" },
+    );
+    return selected?.color;
   }
 
   private async targetBinding(

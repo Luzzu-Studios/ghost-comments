@@ -384,7 +384,7 @@
               "color": "green"
             }
           ],
-          "description": "Ordered tag definitions used by Ghost Comments. Edit in settings.json to customize IDs, labels, colors, and order.",
+          "description": "Ordered tag definitions used by Ghost Comments. Create tags from the tag picker; use settings.json to customize IDs, labels, colors, and order.",
           "items": {
             "type": "object",
             "required": [

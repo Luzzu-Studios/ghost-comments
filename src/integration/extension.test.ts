@@ -59,6 +59,101 @@ suite("Ghost Comments", () => {
     }
   });
 
+  test("creates tags from new notes and existing discussions", async () => {
+    const configuration = vscode.workspace.getConfiguration("ghostComments");
+    const previous = configuration.inspect("tags")?.workspaceValue;
+    const controller = new NoteController(undefined, undefined, false);
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const editor = await vscode.window.showTextDocument(document);
+    controller["authorName"] = async () => "Tag Author";
+    controller["showTagPicker"] = async () => ({ kind: "create" });
+    controller["pickTagColor"] = async () => "purple";
+    try {
+      await controller.initialize();
+      editor.selection = new vscode.Selection(0, 0, 0, 6);
+      controller["promptTagName"] = async () => "Review";
+      controller["createNote"]();
+      const draft = [...controller["drafts"]][0]!;
+      await controller["submitNote"]({ thread: draft, text: "Created with a tag" });
+      const binding = [...controller["bindings"].values()][0]!;
+      assert.equal(binding.store.all[0]!.tag, "review");
+      assert.equal(binding.thread.label, "Discussion · Review");
+      assert.equal(binding.thread.contextValue, "active-purple");
+      const tree = new TagTreeProvider(controller);
+      try {
+        assert.equal(tree.getTreeItem(tree.getChildren()[0]!).label, "Review");
+      } finally {
+        tree.dispose();
+      }
+      controller["promptTagName"] = async () => "Review Again";
+      await controller["setTag"](binding.thread);
+      assert.equal(binding.store.all[0]!.tag, "review-again");
+      assert.equal(binding.thread.label, "Discussion · Review Again");
+      const tags = vscode.workspace.getConfiguration("ghostComments")
+        .get<{ id: string; label: string; color: string }[]>("tags")!;
+      assert.deepEqual(tags.slice(-2), [
+        { id: "review", label: "Review", color: "purple" },
+        { id: "review-again", label: "Review Again", color: "purple" },
+      ]);
+    } finally {
+      controller.dispose();
+      await configuration.update("tags", previous, vscode.ConfigurationTarget.Workspace);
+    }
+  });
+
+  test("keeps drafts and existing tags when creation is cancelled or fails", async () => {
+    const controller = new NoteController(undefined, undefined, false);
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const editor = await vscode.window.showTextDocument(document);
+    controller["authorName"] = async () => "Tag Author";
+    try {
+      await controller.initialize();
+      editor.selection = new vscode.Selection(0, 0, 0, 6);
+      controller["createNote"]();
+      const draft = [...controller["drafts"]][0]!;
+      controller["showTagPicker"] = async () => undefined;
+      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      assert.equal(controller["drafts"].has(draft), true);
+      assert.equal((draft.comments[0] as NoteComment).savedBody, "Keep this draft");
+      assert.equal([...controller["stores"].values()][0]!.all.length, 0);
+      let selections = 0;
+      controller["showTagPicker"] = async () =>
+        ++selections === 1 ? { kind: "create" } : { kind: "tag", tagId: null };
+      controller["promptTagName"] = async () => undefined;
+      assert.equal(await controller["pickTag"](), null);
+      assert.equal(selections, 2);
+      selections = 0;
+      controller["promptTagName"] = async () => "Cancelled Color";
+      controller["pickTagColor"] = async () => undefined;
+      assert.equal(await controller["pickTag"](), null);
+      assert.equal(selections, 2);
+      selections = 0;
+      controller["promptTagName"] = async () => "Cannot Save";
+      controller["pickTagColor"] = async () => "red";
+      controller["saveTagDefinition"] = async () => { throw new Error("test settings failure"); };
+      controller["showTagPicker"] = async () =>
+        ++selections === 1 ? { kind: "create" } : undefined;
+      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      assert.equal(controller["drafts"].has(draft), true);
+      assert.equal((draft.comments[0] as NoteComment).savedBody, "Keep this draft");
+      assert.equal([...controller["stores"].values()][0]!.all.length, 0);
+      assert.equal(selections, 2);
+      controller["showTagPicker"] = async () => ({ kind: "tag", tagId: null });
+      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      const binding = [...controller["bindings"].values()][0]!;
+      const before = binding.store.all[0]!;
+      selections = 0;
+      controller["showTagPicker"] = async () =>
+        ++selections === 1 ? { kind: "create" } : undefined;
+      await controller["setTag"](binding.thread);
+      assert.equal(binding.store.all[0]!.tag, before.tag);
+      assert.equal(binding.store.all[0]!.updatedAt, before.updatedAt);
+      assert.equal(selections, 2);
+    } finally {
+      controller.dispose();
+    }
+  });
+
   test("new draft takes typing focus without modifying source code", async () => {
     const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
     const editor = await vscode.window.showTextDocument(document);

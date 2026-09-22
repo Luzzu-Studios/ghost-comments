@@ -28,6 +28,25 @@ export const DEFAULT_TAGS: readonly TagDefinition[] = [
   { id: "done", label: "Done", color: "green" },
 ];
 
+export function tagNameExists(name: string, definitions: readonly TagDefinition[]): boolean {
+  const normalized = name.trim().toLocaleLowerCase();
+  return definitions.some((tag) => tag.label.trim().toLocaleLowerCase() === normalized);
+}
+
+export function newTagId(name: string, definitions: readonly TagDefinition[]): string {
+  const base = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "tag";
+  const used = new Set(definitions.map((tag) => tag.id));
+  if (!used.has(base)) {
+    return base;
+  }
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) {
+    suffix++;
+  }
+  return `${base}-${suffix}`;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
