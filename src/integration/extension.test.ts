@@ -79,7 +79,7 @@ suite("Ghost Comments", () => {
       assert.equal(binding.store.all[0]!.tag, "review");
       assert.equal(binding.thread.label, "Discussion · Review");
       assert.equal(binding.thread.contextValue, "active-purple");
-      const tree = new TagTreeProvider(controller);
+      const tree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
       try {
         assert.equal(tree.getTreeItem(tree.getChildren()[0]!).label, "Review");
       } finally {
@@ -245,11 +245,13 @@ suite("Ghost Comments", () => {
       assert.equal(binding().thread.label, "Discussion · To Do");
       assert.equal(binding().thread.contextValue, "active-orange");
       assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
-      const tagTree = new TagTreeProvider(controller);
+      const tagTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
       try {
         const tagNodes = tagTree.getChildren();
         assert.equal(tagNodes.length, 1);
-        assert.equal(tagTree.getTreeItem(tagNodes[0]!).label, "To Do");
+        const tagItem = tagTree.getTreeItem(tagNodes[0]!);
+        assert.equal(tagItem.label, "To Do");
+        assert.equal((tagItem.iconPath as vscode.Uri).path.endsWith("/assets/tag-icons/orange.svg"), true);
         const fileNodes = tagTree.getChildren(tagNodes[0]!);
         assert.equal(fileNodes.length, 1);
         assert.equal(tagTree.getTreeItem(fileNodes[0]!).label, "sample.ts");
@@ -309,7 +311,7 @@ suite("Ghost Comments", () => {
       assert.equal(binding().store.all[0]!.body, "Initial note");
       assert.equal(binding().store.all[0]!.replies![0]!.body, "Edited reply");
       let firstReplyTreeId: string | undefined;
-      const repliesTree = new TagTreeProvider(controller);
+      const repliesTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
       try {
         const tagNode = repliesTree.getChildren()[0]!;
         const fileNode = repliesTree.getChildren(tagNode)[0]!;
@@ -372,7 +374,7 @@ suite("Ghost Comments", () => {
       assert.equal(detachedReply.parent, binding().thread);
       assert.equal(detachedReply.body.value, "Reply while detached\nMore detail");
       assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached\nMore detail");
-      const updatedTree = new TagTreeProvider(controller);
+      const updatedTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
       try {
         const tagNode = updatedTree.getChildren()[0]!;
         const fileNode = updatedTree.getChildren(tagNode)[0]!;

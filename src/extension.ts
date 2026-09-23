@@ -5,7 +5,7 @@ import { TagTreeProvider } from "./tags/tagTree";
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const controller = new NoteController(context.workspaceState, context.extensionUri);
   context.subscriptions.push(controller);
-  const tagTree = new TagTreeProvider(controller);
+  const tagTree = new TagTreeProvider(controller, context.extensionUri);
   context.subscriptions.push(
     tagTree,
     vscode.window.registerTreeDataProvider("ghostComments.tags", tagTree),

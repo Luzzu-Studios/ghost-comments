@@ -7,18 +7,6 @@ out/
 .DS_Store
 
 test/
-!test/
-test/*
-!test/fixtures/
-test/fixtures/*
-!test/fixtures/workspace/
-test/fixtures/workspace/*
-!test/fixtures/workspace/.vscode/
-test/fixtures/workspace/.vscode/*
-!test/fixtures/workspace/.vscode/settings.json
-!test/fixtures/integration-workspace/
-test/fixtures/integration-workspace/*
-!test/fixtures/integration-workspace/sample.ts
 !src/test/
 !src/test/**
 docs/

@@ -6,7 +6,7 @@ import type {
 } from "../comments/noteController";
 import {
   configuredTags,
-  tagThemeColor,
+  tagPickerIcon,
 } from "./tagConfiguration";
 import { displayTag } from "./tagDefinitions";
 import type { DisplayTag } from "./tagDefinitions";
@@ -47,7 +47,10 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
   private readonly subscription: vscode.Disposable;
   readonly onDidChangeTreeData = this.emitter.event;
 
-  constructor(private readonly controller: NoteController) {
+  constructor(
+    private readonly controller: NoteController,
+    private readonly extensionUri: vscode.Uri,
+  ) {
     this.subscription = controller.onDidChangeDiscussions(() => this.emitter.fire(undefined));
   }
 
@@ -59,7 +62,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
       );
       item.id = JSON.stringify(["tag", element.tag.id]);
       item.description = String(element.discussions.length);
-      item.iconPath = new vscode.ThemeIcon("tag", tagThemeColor(element.tag.color));
+      item.iconPath = tagPickerIcon(this.extensionUri, element.tag.color);
       item.contextValue = "ghostComments.tag";
       return item;
     }
