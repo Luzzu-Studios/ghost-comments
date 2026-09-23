@@ -1,1 +1,16 @@
-design-assets
+node_modules/
+dist/
+out/
+.vscode-test/
+*.vsix
+*.log
+.DS_Store
+
+test/*
+!test/fixtures/
+test/fixtures/workspace/.gc/
+!src/test/
+!src/test/**
+docs/
+LLM-Reconstruction.md
+design-assets/

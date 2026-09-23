@@ -1,0 +1,476 @@
+{
+  "name": "ghost-comments",
+  "displayName": "Ghost Comments",
+  "description": "Attach durable, repository-shared notes to code.",
+  "version": "1.0.0",
+  "publisher": "LuzzuStudios",
+  "private": true,
+  "author": {
+    "name": "Luzzu Studios",
+    "url": "https://github.com/Luzzu-Studios"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Luzzu-Studios/ghost-comments.git"
+  },
+  "homepage": "https://github.com/Luzzu-Studios/ghost-comments#readme",
+  "bugs": {
+    "url": "https://github.com/Luzzu-Studios/ghost-comments/issues"
+  },
+  "engines": {
+    "vscode": "^1.138.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "comments",
+    "annotations",
+    "notes",
+    "code review",
+    "collaboration",
+    "todo",
+    "developer tools"
+  ],
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#08081f",
+    "theme": "dark"
+  },
+  "icon": "assets/icon.png",
+  "activationEvents": [
+    "workspaceContains:**/.gc/notes.json",
+    "onView:ghostComments.tags"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ghostComments",
+          "title": "Ghost Comments",
+          "icon": "assets/ghost-comments-view-v3.svg"
+        }
+      ]
+    },
+    "views": {
+      "ghostComments": [
+        {
+          "id": "ghostComments.tags",
+          "name": "Tagged Comments"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "ghostComments.createNote",
+        "title": "Create Note",
+        "category": "Ghost Comments"
+      },
+      {
+        "command": "ghostComments.submitNote",
+        "title": "Save Note",
+        "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "ghostComments.cancelNote",
+        "title": "Cancel"
+      },
+      {
+        "command": "ghostComments.editNote",
+        "title": "Edit Note",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "ghostComments.saveNote",
+        "title": "Save"
+      },
+      {
+        "command": "ghostComments.cancelEdit",
+        "title": "Cancel"
+      },
+      {
+        "command": "ghostComments.deleteNote",
+        "title": "Delete Note",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "ghostComments.reattachNote",
+        "title": "Reattach Note"
+      },
+      {
+        "command": "ghostComments.replyNote",
+        "title": "Reply",
+        "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "ghostComments.attachHere",
+        "title": "Attach here",
+        "category": "Ghost Comments",
+        "enablement": "ghostComments.reattaching"
+      },
+      {
+        "command": "ghostComments.cancelReattach",
+        "title": "Cancel Reattachment",
+        "category": "Ghost Comments",
+        "enablement": "ghostComments.reattaching"
+      },
+      {
+        "command": "ghostComments.setTag",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "ghostComments.setTag.red",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/red.svg",
+          "dark": "assets/tag-icons/red.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.orange",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/orange.svg",
+          "dark": "assets/tag-icons/orange.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.yellow",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/yellow.svg",
+          "dark": "assets/tag-icons/yellow.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.green",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/green.svg",
+          "dark": "assets/tag-icons/green.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.blue",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/blue.svg",
+          "dark": "assets/tag-icons/blue.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.purple",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/purple.svg",
+          "dark": "assets/tag-icons/purple.svg"
+        }
+      },
+      {
+        "command": "ghostComments.setTag.gray",
+        "title": "Set Tag…",
+        "category": "Ghost Comments",
+        "icon": {
+          "light": "assets/tag-icons/gray.svg",
+          "dark": "assets/tag-icons/gray.svg"
+        }
+      },
+      {
+        "command": "ghostComments.clearTag",
+        "title": "Mark as Untagged",
+        "category": "Ghost Comments"
+      },
+      {
+        "command": "ghostComments.revealDiscussion",
+        "title": "Open Ghost Comment",
+        "category": "Ghost Comments"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "ghostComments.createNote",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "ghostComments.submitNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.cancelNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.editNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.saveNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.cancelEdit",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.deleteNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.replyNote",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.red",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.orange",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.yellow",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.green",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.blue",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.purple",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.setTag.gray",
+          "when": "false"
+        },
+        {
+          "command": "ghostComments.revealDiscussion",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "ghostComments.submitNote",
+          "group": "inline@2",
+          "when": "commentController == ghostComments && commentThreadIsEmpty"
+        },
+        {
+          "command": "ghostComments.cancelNote",
+          "group": "inline@1",
+          "when": "commentController == ghostComments && commentThreadIsEmpty"
+        },
+        {
+          "command": "ghostComments.replyNote",
+          "group": "inline@2",
+          "when": "commentController == ghostComments && !commentThreadIsEmpty"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "ghostComments.reattachNote",
+          "group": "navigation",
+          "when": "commentController == ghostComments && commentThread =~ /^stale-/"
+        },
+        {
+          "command": "ghostComments.setTag",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-untagged || commentThread == stale-untagged)"
+        },
+        {
+          "command": "ghostComments.setTag.red",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-red || commentThread == stale-red)"
+        },
+        {
+          "command": "ghostComments.setTag.orange",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-orange || commentThread == stale-orange)"
+        },
+        {
+          "command": "ghostComments.setTag.yellow",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-yellow || commentThread == stale-yellow)"
+        },
+        {
+          "command": "ghostComments.setTag.green",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-green || commentThread == stale-green)"
+        },
+        {
+          "command": "ghostComments.setTag.blue",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-blue || commentThread == stale-blue)"
+        },
+        {
+          "command": "ghostComments.setTag.purple",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-purple || commentThread == stale-purple)"
+        },
+        {
+          "command": "ghostComments.setTag.gray",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && (commentThread == active-gray || commentThread == stale-gray)"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "ghostComments.editNote",
+          "group": "navigation@1",
+          "when": "commentController == ghostComments && commentThread != draft"
+        },
+        {
+          "command": "ghostComments.deleteNote",
+          "group": "navigation@2",
+          "when": "commentController == ghostComments && commentThread != draft"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "ghostComments.cancelEdit",
+          "group": "inline@1",
+          "when": "commentController == ghostComments"
+        },
+        {
+          "command": "ghostComments.saveNote",
+          "group": "inline@2",
+          "when": "commentController == ghostComments"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ghostComments.attachHere",
+          "when": "ghostComments.reattaching",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ghostComments.setTag",
+          "when": "view == ghostComments.tags && viewItem == ghostComments.note",
+          "group": "inline@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Ghost Comments",
+      "properties": {
+        "ghostComments.authorName": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "description": "Display name stored with newly created notes."
+        },
+        "ghostComments.backupInterval": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 0,
+          "scope": "window",
+          "description": "Number of saved note changes between updates to .gc/notes-backup.json. The first saved change creates the backup; 0 disables automatic backups."
+        },
+        "ghostComments.tags": {
+          "type": "array",
+          "scope": "window",
+          "default": [
+            {
+              "id": "todo",
+              "label": "To Do",
+              "color": "orange"
+            },
+            {
+              "id": "question",
+              "label": "Question",
+              "color": "blue"
+            },
+            {
+              "id": "important",
+              "label": "Important",
+              "color": "red"
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "color": "green"
+            }
+          ],
+          "description": "Ordered tag definitions used by Ghost Comments. Create tags from the tag picker; use settings.json to customize IDs, labels, colors, and order.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                "description": "Stable ID stored with tagged notes."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "orange",
+                  "yellow",
+                  "green",
+                  "blue",
+                  "purple",
+                  "gray"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "npm run typecheck && npm run lint",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "test:unit": "tsc && node --test out/test/*.test.js",
+    "test:integration": "tsc && vscode-test",
+    "test": "npm run test:unit && npm run test:integration",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "npm run check && npm run build",
+    "sandbox": "npm run build && node scripts/sandbox.mjs"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.3",
+    "@types/vscode": "^1.138.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.35.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0"
+  }
+}
