@@ -48,7 +48,7 @@ suite("Ghost Comments", () => {
   teardown(cleanStorage);
 
   test("provides colored tag icons for the picker", async () => {
-    const extension = vscode.extensions.getExtension("ghost-comments.ghost-comments");
+    const extension = vscode.extensions.getExtension("LuzzuStudios.ghost-comments");
     assert.ok(extension);
     for (const color of TAG_COLORS) {
       const svg = new TextDecoder().decode(
@@ -79,7 +79,7 @@ suite("Ghost Comments", () => {
       assert.equal(binding.store.all[0]!.tag, "review");
       assert.equal(binding.thread.label, "Discussion · Review");
       assert.equal(binding.thread.contextValue, "active-purple");
-      const tree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
+      const tree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
       try {
         assert.equal(tree.getTreeItem(tree.getChildren()[0]!).label, "Review");
       } finally {
@@ -245,7 +245,7 @@ suite("Ghost Comments", () => {
       assert.equal(binding().thread.label, "Discussion · To Do");
       assert.equal(binding().thread.contextValue, "active-orange");
       assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
-      const tagTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
+      const tagTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
       try {
         const tagNodes = tagTree.getChildren();
         assert.equal(tagNodes.length, 1);
@@ -311,7 +311,7 @@ suite("Ghost Comments", () => {
       assert.equal(binding().store.all[0]!.body, "Initial note");
       assert.equal(binding().store.all[0]!.replies![0]!.body, "Edited reply");
       let firstReplyTreeId: string | undefined;
-      const repliesTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
+      const repliesTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
       try {
         const tagNode = repliesTree.getChildren()[0]!;
         const fileNode = repliesTree.getChildren(tagNode)[0]!;
@@ -374,7 +374,7 @@ suite("Ghost Comments", () => {
       assert.equal(detachedReply.parent, binding().thread);
       assert.equal(detachedReply.body.value, "Reply while detached\nMore detail");
       assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached\nMore detail");
-      const updatedTree = new TagTreeProvider(controller, vscode.extensions.getExtension("ghost-comments.ghost-comments")!.extensionUri);
+      const updatedTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
       try {
         const tagNode = updatedTree.getChildren()[0]!;
         const fileNode = updatedTree.getChildren(tagNode)[0]!;
@@ -551,7 +551,7 @@ suite("Ghost Comments", () => {
 
   test("activates and registers its public command", async () => {
     const extension = vscode.extensions.getExtension(
-      "ghost-comments.ghost-comments",
+      "LuzzuStudios.ghost-comments",
     );
     assert.ok(extension);
     await extension.activate();

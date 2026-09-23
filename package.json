@@ -2,16 +2,43 @@
   "name": "ghost-comments",
   "displayName": "Ghost Comments",
   "description": "Attach durable, repository-shared notes to code.",
-  "version": "0.0.5",
-  "publisher": "ghost-comments",
+  "version": "1.0.0",
+  "publisher": "LuzzuStudios",
   "private": true,
+  "author": {
+    "name": "Luzzu Studios",
+    "url": "https://github.com/Luzzu-Studios"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Luzzu-Studios/ghost-comments.git"
+  },
+  "homepage": "https://github.com/Luzzu-Studios/ghost-comments#readme",
+  "bugs": {
+    "url": "https://github.com/Luzzu-Studios/ghost-comments/issues"
+  },
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.138.0"
   },
   "categories": [
     "Other"
   ],
-  "icon": "assets/256pxSolov4.png",
+  "keywords": [
+    "comments",
+    "annotations",
+    "notes",
+    "code review",
+    "collaboration",
+    "todo",
+    "developer tools"
+  ],
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#08081f",
+    "theme": "dark"
+  },
+  "icon": "assets/icon.png",
   "activationEvents": [
     "workspaceContains:**/.gc/notes.json",
     "onView:ghostComments.tags"
@@ -430,14 +457,14 @@
     "test:unit": "tsc && node --test out/test/*.test.js",
     "test:integration": "tsc && vscode-test",
     "test": "npm run test:unit && npm run test:integration",
-    "package": "vsce package --no-dependencies --allow-missing-repository --skip-license",
+    "package": "vsce package --no-dependencies",
     "vscode:prepublish": "npm run check && npm run build",
     "sandbox": "npm run build && node scripts/sandbox.mjs"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.20.3",
-    "@types/vscode": "^1.100.0",
+    "@types/vscode": "^1.138.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",

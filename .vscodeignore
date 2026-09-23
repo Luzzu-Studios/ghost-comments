@@ -1,4 +1,5 @@
 .git/**
+.github/**
 .gitignore
 .vscode/**
 .vscode-test/**
@@ -15,3 +16,5 @@ tsconfig.json
 README (1).md
 design-assets/**
 scripts/**
+docs/**
+LLM-Reconstruction.md

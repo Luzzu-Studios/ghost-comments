@@ -1,24 +1,45 @@
 # Ghost Comments
 
-Ghost Comments attaches durable, repository-shared notes to code without placing comment text in source files.
+Attach durable, repository-shared discussions to code without adding comment text to source files.
 
-## Use
+![Ghost Comments showing a tagged discussion beside the Tagged Comments sidebar](assets/marketplace/overview.png)
 
-1. Select code, or leave the cursor on a line to annotate the full line.
+Ghost Comments uses VS Code's native Comments interface. Notes stay anchored to code as it moves, support Markdown replies, and can be organized with colored tags from the Activity Bar.
+
+## Features
+
+- Attach a discussion to selected code or an entire line.
+- Write multiline Markdown notes and replies in VS Code's native comment editor.
+- Share discussions through a deterministic `.gc/notes.json` file in the repository.
+- Follow code as lines move, with a safe reattachment flow when an anchor can no longer be found.
+- Create and apply colored tags without editing settings JSON.
+- Browse discussions by tag, file, note, and reply from the Tagged Comments sidebar.
+- Recover from accidental note-file changes with passive local backup snapshots.
+
+![Creating and tagging a Ghost Comments discussion](assets/marketplace/create-and-tag.gif)
+
+## Getting Started
+
+1. Select code, or leave the cursor on a line to annotate the whole line.
 2. Press `Cmd+Alt+N` on macOS or `Ctrl+Alt+N` on Windows and Linux.
-3. Enter a multiline Markdown note in the native VS Code comment editor and choose **Save Note**.
+3. Enter a Markdown note and choose **Save Note**.
+4. Choose an existing tag, create a new tag, or press Enter on **Untagged**.
 
-The first note prompts for an author name. Change it later with the `Ghost Comments: Author Name` setting. Existing notes retain their original author.
+The first note prompts for an author name. Change it later with the **Ghost Comments: Author Name** setting. Existing discussions keep their original authors.
 
-Saved notes use VS Code's native gutter indicator and Comments panel. Open a note to read it, use its edit action to change it, or use its delete action to remove it from the shared file.
+Saved notes appear through VS Code's gutter indicator and Comments panel. Use the comment actions to edit, reply, delete, reattach, or change the discussion tag.
 
-## Tags and Tagged Comments
+### Change the shortcut
 
-When saving a new note, choose an optional category tag. **Untagged** is the first and default choice, so pressing Enter in the tag picker saves the note without a tag. Choose **Create New Tag…** at the end of the picker to enter a name and select one of seven colors; the new tag is added to workspace settings and applied to the note immediately. Cancelling the name or color step returns to the tag picker. Closing the tag picker keeps a new note as an unsaved draft. Use **Set Tag…** on an existing discussion to change its tag, create one, or choose **Untagged** to clear its assignment. The **Ghost Comments: Mark as Untagged** command remains available for existing shortcuts. Tags categorize the entire discussion, including its replies.
+Open **Preferences: Open Keyboard Shortcuts**, search for **Ghost Comments: Create Note**, and assign another shortcut. User keybindings override the packaged default.
 
-Open the Ghost Comments icon in the Activity Bar to browse discussions grouped by **tag → file → note → replies**, including an **Untagged** group. Expand a note to see its replies in order; selecting a note or reply opens its code and expands the native discussion. Stale notes open their file without pointing at an unsafe range. The sidebar and tag picker use the extension's consistently colored tag icons. Tagged native discussions show the tag name in the heading and a colored tag icon on the **Set Tag** action.
+## Tags and Sidebar
 
-The default tags are To Do, Question, Important, and Done. New tags created in the picker are saved in the workspace's `ghostComments.tags` setting. To rename, recolor, reorder, or remove tag definitions, use **Preferences: Open Settings (JSON)**:
+The tag picker starts with **Untagged**, followed by configured tags and **Create New Tag…**. Creating a tag asks for a name and one of seven colors, saves the definition to workspace settings, and applies it immediately.
+
+Open the Ghost Comments Activity Bar view to browse discussions by **tag → file → note → replies**. Selecting a note or reply opens its file and expands the native discussion. Detached discussions open the file without selecting an unsafe range.
+
+The default tags are To Do, Question, Important, and Done. Advanced changes such as renaming, recoloring, reordering, or removing definitions are available through `ghostComments.tags` in workspace settings:
 
 ```json
 "ghostComments.tags": [
@@ -28,60 +49,49 @@ The default tags are To Do, Question, Important, and Done. New tags created in t
 ]
 ```
 
-Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `gray`. Keep an ID unchanged when renaming or recoloring a tag because the ID is stored in `notes.json`. Removing a definition does not discard assignments; affected notes appear under a gray `Unknown: <id>` group.
+Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `gray`. Keep an ID unchanged when renaming or recoloring a tag because notes store the ID. Removing a definition preserves existing assignments under a gray `Unknown: <id>` group.
 
-### Change the shortcut
+## Shared Storage and Backups
 
-If the default shortcut does nothing or conflicts with macOS or another extension:
+Each workspace folder stores discussions in `.gc/notes.json`. Commit this file when discussions should be shared with the repository team. Ghost Comments watches it for changes from editors and Git operations.
 
-1. Run **Preferences: Open Keyboard Shortcuts** from the Command Palette.
-2. Search for **Ghost Comments: Create Note** or `ghostComments.createNote`.
-3. Select the edit icon, choose **Change Keybinding**, and press the shortcut you want.
-4. Press Enter to save it.
+A passive recovery snapshot is stored at `.gc/notes-backup.json`. The first saved change creates it, and the **Ghost Comments: Backup Interval** setting controls later updates. Set the interval to `0` to disable backups.
 
-For example, `Shift+Option+N` is a working macOS alternative. User keybindings override Ghost Comments's packaged default.
+Backups are never restored automatically. To recover, preserve or remove a damaged `notes.json`, copy `notes-backup.json` to `notes.json`, and run **Developer: Reload Window**. A backup can trail the primary file by the configured interval.
 
-## Shared Storage
+## Moving and Reattaching Code
 
-Each workspace folder stores notes in:
+Ghost Comments stores the original range and nearby text. When a file opens, it validates the original location and searches for a unique contextual match if the code moved.
 
-```text
-.gc/notes.json
-```
+If no safe match exists, the discussion becomes detached. Choose **Reattach Note**, select a new location in the same workspace folder, and choose **Attach here**. Cancelling leaves the discussion detached. File renames within one workspace folder update note paths automatically.
 
-Commit this file to Git when notes should be shared with the repository team. Ghost Comments watches it for changes, including changes produced by Git operations, and updates visible threads without polling.
+## Settings
 
-Ghost Comments also maintains a passive recovery snapshot at `.gc/notes-backup.json`. The first successful note change creates it, and by default every 10 later changes update it. Creates, edits, replies, deletions, reattachments, anchor changes, and file-path updates all count. An unchanged source-file save performs no notes-file write and does not advance the interval; one save that adjusts several anchors counts once. Set **Ghost Comments: Backup Interval** to another non-negative number, or to `0` to disable automatic backups. The interval is tracked separately for each workspace folder and continues across VS Code restarts.
+| Setting | Purpose | Default |
+| --- | --- | --- |
+| `ghostComments.authorName` | Author stored with new notes and replies | Prompt on first use |
+| `ghostComments.backupInterval` | Saved changes between backup updates; `0` disables backups | `10` |
+| `ghostComments.tags` | Ordered tag definitions and colors | Four built-in tags |
 
-The backup can trail `notes.json` by up to the configured interval and is never restored automatically. If `notes.json` is deleted or corrupted, preserve or remove the damaged file, copy or rename `notes-backup.json` to `notes.json`, and run **Developer: Reload Window**. The backup uses the same validated schema as the primary file, so no conversion is required. Restoring a backup discards changes made after that snapshot.
+## Requirements and Limitations
 
-The file contains a `schemaVersion` and deterministic note records. Each record stores a workspace-relative path, range, contextual anchor, Markdown body, optional tag ID, author, timestamps, and anchor status. Do not edit the schema version manually. Invalid files are reported and never overwrite the last valid in-memory state.
+- VS Code 1.138 or later.
+- Notes must be attached to files inside an open workspace folder.
+- Moving files between workspace folders does not move discussions automatically.
+- Ghost Comments does not provide resolved state, cloud synchronization, authentication, or a webview.
+- Teams sharing `.gc/notes.json` should use a reply-capable Ghost Comments version before editing discussions.
 
-## Moving Code
+## Privacy
 
-Ghost Comments stores both the original range and nearby text. When a document opens, it checks the original range and then searches for a unique contextual match if lines moved.
+Ghost Comments contains no telemetry, analytics, advertising, authentication, or cloud service. The extension does not send note text, source code, author names, or workspace data over the network. Discussions remain in the workspace's `.gc` directory; settings are stored through VS Code and may follow the user's VS Code Settings Sync preferences.
 
-If no safe match exists, the note becomes **detached** (stored as `stale`). The Comments panel heading shows **Needs reattachment**, followed by the tag name when tagged, without a misleading editor marker. Detached notes remain detached even after undo, restoring matching code, saving, or reopening the file.
+## Support
 
-When code is deleted or missing anchors are discovered, a grouped prompt offers **Reattach…** or **Later**. Dismissing it preserves every comment and reply. Deletion remains a separate explicit action on the comment.
-
-Choose **Reattach Note** from the detached thread or Command Palette, then select code or place the cursor on a line in a file in the same workspace folder. Click **Attach here** in the reattachment notification to confirm the destination, or **Cancel** to leave the note detached. The status bar, editor context menu, and Command Palette also provide **Attach here**. A selection attaches exactly that range; a cursor attaches the entire current line. The comment opens at its new location. **Cancel Reattachment** leaves it detached, and errors preserve it for retry.
-
-File renames within the same workspace folder update note paths automatically. Moving a file between workspace folders is not automatic because each folder owns a separate notes file.
-
-## Scope
-
-Each anchored note supports Markdown replies, including replies to your own notes. Replies are stored with the note in `.gc/notes.json` and can be edited or deleted individually. Deleting the initial note deletes the entire discussion. All collaborators should use a reply-capable version of Ghost Comments before editing shared notes; older versions do not preserve replies.
-
-The MVP supports create, edit, delete, reply, tagging, browsing by tag, and reattach actions. It deliberately does not include resolved state, cloud synchronization, authentication, or a webview.
-
-VS Code does not expose a general-purpose IntelliSense-style popup API for arbitrary extension input. Ghost Comments uses the supported native Comments API, which provides editor-anchored multiline input, theme integration, gutter indicators, and the Comments panel with minimal extension overhead.
+Report bugs and request features through [GitHub Issues](https://github.com/Luzzu-Studios/ghost-comments/issues). Include the extension version, VS Code version, operating system, reproduction steps, and sanitized error details. See [SUPPORT.md](SUPPORT.md) for guidance.
 
 ## Development
 
-Requirements: Node.js 20 or later and VS Code 1.100 or later.
-
-See the [development guide](https://github.com/Luzzu-Studios/ghost-comments/blob/main/docs/README.md) (`docs/README.md` in this checkout) for the entry points, architecture, runtime flow, storage model, re-anchoring algorithm, build pipeline, and test structure.
+See the [development guide](docs/README.md) for architecture, storage, anchoring, build, test, and sandbox details.
 
 ```bash
 npm install
@@ -91,40 +101,6 @@ npm run test:integration
 npm run build
 ```
 
-### Manual sandbox
+## License
 
-Run `npm run sandbox` to build the extension and open `sample.ts` in a separate VS Code window. The script downloads or reuses the same VS Code runtime as the integration tests, but runs no tests and stays open until you close the window. Edit `test/fixtures/workspace/.vscode/settings.json` to customize `ghostComments.tags` in the sandbox; changes apply without editing the extension's `package.json`. The sandbox user profile and extensions are isolated under `.vscode-test/`, while notes persist in `test/fixtures/workspace/.gc/notes.json`.
-
-The **Run Ghost Comments (Sandbox)** launch profile opens `test/fixtures/workspace` in a separate Extension Development Host with other extensions disabled.
-
-On macOS, the physical `F5` key can be assigned to Dictation. If macOS asks to enable Dictation, dismiss it and use one of these instead:
-
-- Press `Fn+F5`.
-- Open **Run and Debug**, select **Run Ghost Comments (Sandbox)**, and choose the start button.
-- Run **Debug: Start Debugging** from the Command Palette.
-
-In the Extension Development Host:
-
-1. Open `sample.ts`.
-2. Select `const message = ...` and press `Cmd+Option+N`.
-3. Enter an author name when prompted, write a multiline note, choose **Save Note**, and select a tag.
-4. Confirm the native comment marker appears and `.gc/notes.json` is created.
-5. Put the cursor on another line without selecting text and create another note. It should anchor to the full line.
-6. Open a saved note and verify its edit and delete actions.
-7. Run **Developer: Reload Window** and confirm the notes return.
-8. To test re-anchoring, insert lines above a note and save. Close and reopen the file; the note should follow its original code.
-9. To test stale handling, close the annotated file, change or remove its anchored text outside the Extension Development Host, then reopen it. The note should remain in the Comments panel as stale without a gutter marker.
-10. Open the Ghost Comments Activity Bar view, verify tag grouping, change and clear a tag, and select a note to navigate to it.
-11. Choose **Reattach Note**, select a new location, then choose **Attach here**. Repeat with only a cursor to verify whole-line attachment; cancel once to verify the note stays detached.
-
-Delete `test/fixtures/workspace/.gc` after manual testing if you do not want to keep the sandbox notes.
-
-Run `npm run test:integration` to execute the automated integration suite in a clean Extension Host.
-
-Create a VSIX with:
-
-```bash
-npm run package
-```
-
-The extension is event-driven: it activates for its commands, the Ghost Comments view, or an existing `.gc/notes.json`, watches only note files, and validates source anchors when relevant documents open or save.
+Ghost Comments is available under the [MIT License](LICENSE).
