@@ -6,7 +6,9 @@ out/
 *.log
 .DS_Store
 
-test/
+test/*
+!test/fixtures/
+test/fixtures/workspace/.gc/
 !src/test/
 !src/test/**
 docs/
