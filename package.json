@@ -270,12 +270,12 @@
       "comments/commentThread/context": [
         {
           "command": "ghostComments.submitNote",
-          "group": "inline@2",
+          "group": "inline@1",
           "when": "commentController == ghostComments && commentThreadIsEmpty"
         },
         {
           "command": "ghostComments.cancelNote",
-          "group": "inline@1",
+          "group": "inline@2",
           "when": "commentController == ghostComments && commentThreadIsEmpty"
         },
         {
@@ -346,12 +346,12 @@
       "comments/comment/context": [
         {
           "command": "ghostComments.cancelEdit",
-          "group": "inline@1",
+          "group": "inline@2",
           "when": "commentController == ghostComments"
         },
         {
           "command": "ghostComments.saveNote",
-          "group": "inline@2",
+          "group": "inline@1",
           "when": "commentController == ghostComments"
         }
       ],
