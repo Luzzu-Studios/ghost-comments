@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-function safeMarkdown(body: string): vscode.MarkdownString {
+export function safeMarkdown(body: string): vscode.MarkdownString {
   const markdown = new vscode.MarkdownString(body);
   markdown.isTrusted = false;
   markdown.supportHtml = false;
@@ -81,4 +81,14 @@ export class NoteComment implements vscode.Comment {
 
 export function commentBodyText(body: string | vscode.MarkdownString): string {
   return typeof body === "string" ? body : body.value;
+}
+
+export function validatedCommentBody(
+  body: string | vscode.MarkdownString,
+): string {
+  const value = commentBodyText(body).trim();
+  if (!value) {
+    throw new Error("Enter a comment before saving.");
+  }
+  return value;
 }

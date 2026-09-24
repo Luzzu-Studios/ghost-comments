@@ -40,6 +40,7 @@
   },
   "icon": "assets/icon.png",
   "activationEvents": [
+    "workspaceContains:**/.gc/comments.json",
     "workspaceContains:**/.gc/notes.json",
     "onView:ghostComments.tags"
   ],
@@ -84,7 +85,8 @@
       },
       {
         "command": "ghostComments.saveNote",
-        "title": "Save"
+        "title": "Save",
+        "enablement": "!commentIsEmpty"
       },
       {
         "command": "ghostComments.cancelEdit",
@@ -270,12 +272,12 @@
       "comments/commentThread/context": [
         {
           "command": "ghostComments.submitNote",
-          "group": "inline@2",
+          "group": "inline@1",
           "when": "commentController == ghostComments && commentThreadIsEmpty"
         },
         {
           "command": "ghostComments.cancelNote",
-          "group": "inline@1",
+          "group": "inline@2",
           "when": "commentController == ghostComments && commentThreadIsEmpty"
         },
         {
@@ -346,12 +348,12 @@
       "comments/comment/context": [
         {
           "command": "ghostComments.cancelEdit",
-          "group": "inline@1",
+          "group": "inline@2",
           "when": "commentController == ghostComments"
         },
         {
           "command": "ghostComments.saveNote",
-          "group": "inline@2",
+          "group": "inline@1",
           "when": "commentController == ghostComments"
         }
       ],
@@ -384,7 +386,7 @@
           "default": 10,
           "minimum": 0,
           "scope": "window",
-          "description": "Number of saved note changes between updates to .gc/notes-backup.json. The first saved change creates the backup; 0 disables automatic backups."
+          "description": "Number of saved comment changes between updates to .gc/comments-backup.json. The first saved change creates the backup; 0 disables automatic backups."
         },
         "ghostComments.tags": {
           "type": "array",

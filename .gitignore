@@ -14,3 +14,4 @@ test/fixtures/workspace/.gc/
 docs/
 LLM-Reconstruction.md
 design-assets/
+.github/RELEASE_CHECKLIST.md

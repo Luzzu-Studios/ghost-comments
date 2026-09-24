@@ -9,7 +9,7 @@ import type { BackupState } from "../storage/noteStore";
 import { configuredTags, tagPickerIcon } from "../tags/tagConfiguration";
 import { DEFAULT_TAGS, displayTag, nativeTagLabel, newTagId, parseTagDefinitions, tagNameExists, TAG_COLORS } from "../tags/tagDefinitions";
 import type { TagColor, TagDefinition } from "../tags/tagDefinitions";
-import { commentBodyText, NoteComment } from "./noteComment";
+import { NoteComment, safeMarkdown, validatedCommentBody } from "./noteComment";
 
 interface Binding {
   key: string;
@@ -283,7 +283,7 @@ export class NoteController implements vscode.Disposable {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not load ${folder.name}/.gc/notes.json: ${message}`,
+        `Ghost Comments could not load ${folder.name}/.gc/comments.json: ${message}`,
       );
     }
   }
@@ -369,10 +369,16 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async submitNote(reply: vscode.CommentReply): Promise<void> {
-    const body = reply.text.trim();
     const thread = reply.thread;
-    if (!body || !this.drafts.has(thread) || !thread.range) {
+    if (!this.drafts.has(thread) || !thread.range) {
       return;
+    }
+    let body: string;
+    try {
+      body = validatedCommentBody(reply.text);
+    } catch (error) {
+      this.discardDraft(thread);
+      throw error;
     }
     const document = await vscode.workspace.openTextDocument(thread.uri);
     const store = this.requireStore(thread.uri);
@@ -384,12 +390,7 @@ export class NoteController implements vscode.Disposable {
     const now = new Date().toISOString();
     const selectedTag = await this.pickTag();
     if (selectedTag === undefined) {
-      const draft = thread.comments[0] as NoteComment;
-      draft.savedBody = body;
-      draft.body = new vscode.MarkdownString(body);
-      draft.mode = vscode.CommentMode.Editing;
-      thread.comments = [draft];
-      thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+      this.keepDraftEditing(thread, body);
       return;
     }
     const note: StoredNote = {
@@ -407,6 +408,18 @@ export class NoteController implements vscode.Disposable {
     this.drafts.delete(thread);
     thread.dispose();
     await store.upsert(note);
+  }
+
+  private keepDraftEditing(
+    thread: vscode.CommentThread,
+    body: string,
+  ): void {
+    const draft = thread.comments[0] as NoteComment;
+    draft.savedBody = body;
+    draft.body = safeMarkdown(body);
+    draft.mode = vscode.CommentMode.Editing;
+    thread.comments = [draft];
+    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
   }
 
   private async authorName(): Promise<string | undefined> {
@@ -637,10 +650,7 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async replyNote(reply: vscode.CommentReply): Promise<void> {
-    const body = reply.text.trim();
-    if (!body) {
-      return;
-    }
+    const body = validatedCommentBody(reply.text);
     const binding = this.requireBinding(reply.thread);
     const author = await this.authorName();
     if (!author) {
@@ -664,9 +674,17 @@ export class NoteController implements vscode.Disposable {
   }
 
   private cancelNote(reply: vscode.CommentReply): void {
-    if (this.drafts.delete(reply.thread)) {
-      reply.thread.dispose();
+    this.discardDraft(reply.thread);
+  }
+
+  private discardDraft(thread: vscode.CommentThread): void {
+    if (!this.drafts.delete(thread)) {
+      return;
     }
+    if (this.draftAwaitingEditor === thread) {
+      this.draftAwaitingEditor = undefined;
+    }
+    thread.dispose();
   }
 
   private requireBinding(thread: vscode.CommentThread): Binding {
@@ -689,20 +707,24 @@ export class NoteController implements vscode.Disposable {
 
   private editNote(comment: NoteComment): void {
     this.requireBinding(comment.parent);
-    comment.body = new vscode.MarkdownString(comment.savedBody);
+    comment.body = safeMarkdown(comment.savedBody);
     comment.mode = vscode.CommentMode.Editing;
     comment.parent.comments = [...comment.parent.comments];
   }
 
   private async saveNote(comment: NoteComment): Promise<void> {
     if (this.drafts.has(comment.parent)) {
-      await this.submitNote({ thread: comment.parent, text: commentBodyText(comment.body) });
+      await this.submitNote({ thread: comment.parent, text: comment.body.value });
       return;
     }
     const binding = this.requireBinding(comment.parent);
-    const body = commentBodyText(comment.body).trim();
-    if (!body) {
-      throw new Error("A note cannot be empty. Delete it instead.");
+    let body: string;
+    try {
+      body = validatedCommentBody(comment.body);
+    } catch (error) {
+      comment.restore();
+      comment.parent.comments = [...comment.parent.comments];
+      throw error;
     }
     const note = this.currentNote(binding);
     const updatedAt = new Date().toISOString();

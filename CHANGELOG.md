@@ -2,6 +2,10 @@
 
 All notable changes to Ghost Comments are documented in this file.
 
+## Unreleased
+
+- Rename shared discussion storage to `.gc/comments.json` and migrate existing `.gc/notes.json` files on first open.
+
 ## 1.0.0 - 2026-09-23
 
 - Attach durable Markdown discussions to selected code or a complete line.

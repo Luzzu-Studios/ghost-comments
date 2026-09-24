@@ -189,6 +189,130 @@ suite("Ghost Comments", () => {
     }
   });
 
+  test("validates comment bodies before prompting or saving", async () => {
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, "sample.ts"),
+    );
+    const editor = await vscode.window.showTextDocument(document);
+    const controller = new NoteController(undefined, undefined, false);
+    let authorPrompts = 0;
+    let tagPrompts = 0;
+    controller["authorName"] = async () => {
+      authorPrompts += 1;
+      return "Validation Test";
+    };
+    controller["pickTag"] = async () => {
+      tagPrompts += 1;
+      return null;
+    };
+    try {
+      await controller.initialize();
+      editor.selection = new vscode.Selection(0, 0, 0, 6);
+      const store = [...controller["stores"].values()][0]!;
+
+      for (const text of ["", " \n\t "]) {
+        controller["createNote"]();
+        const draft = [...controller["drafts"]][0]!;
+        let disposed = false;
+        const dispose = draft.dispose.bind(draft);
+        draft.dispose = () => {
+          disposed = true;
+          dispose();
+        };
+        // VS Code changes an editing comment to preview before invoking Save.
+        const draftComment = draft.comments[0] as NoteComment;
+        draftComment.mode = vscode.CommentMode.Preview;
+        draft.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+        await assert.rejects(
+          controller["submitNote"]({ thread: draft, text }),
+          /Enter a comment before saving/,
+        );
+        assert.equal(controller["drafts"].has(draft), false);
+        assert.equal(controller["draftAwaitingEditor"], undefined);
+        assert.equal(disposed, true);
+        assert.equal(store.all.length, 0);
+      }
+      assert.equal(authorPrompts, 0);
+      assert.equal(tagPrompts, 0);
+
+      controller["createNote"]();
+      const draft = [...controller["drafts"]][0]!;
+      await controller["submitNote"]({
+        thread: draft,
+        text: "  **Safe markdown** [command](command:workbench.action.closeWindow)  ",
+      });
+      assert.equal(
+        store.all[0]!.body,
+        "**Safe markdown** [command](command:workbench.action.closeWindow)",
+      );
+      assert.equal(authorPrompts, 1);
+      assert.equal(tagPrompts, 1);
+
+      const binding = [...controller["bindings"].values()][0]!;
+      const noteComment = binding.thread.comments[0] as NoteComment;
+      assert.equal(noteComment.body.isTrusted, false);
+      assert.equal(noteComment.body.supportHtml, false);
+
+      await assert.rejects(
+        controller["replyNote"]({ thread: binding.thread, text: " \t " }),
+        /Enter a comment before saving/,
+      );
+      assert.equal(authorPrompts, 1);
+      assert.equal(store.all[0]!.replies, undefined);
+
+      await controller["replyNote"]({
+        thread: binding.thread,
+        text: "  Reply with <b>HTML</b>  ",
+      });
+      assert.equal(store.all[0]!.replies![0]!.body, "Reply with <b>HTML</b>");
+      const replyComment = binding.thread.comments[1] as NoteComment;
+
+      controller["editNote"](noteComment);
+      noteComment.body = new vscode.MarkdownString(" \n ");
+      await assert.rejects(
+        controller["saveNote"](noteComment),
+        /Enter a comment before saving/,
+      );
+      assert.equal(store.all[0]!.body.startsWith("**Safe markdown**"), true);
+      assert.equal(noteComment.mode, vscode.CommentMode.Preview);
+      assert.equal(
+        noteComment.body.value,
+        "**Safe markdown** [command](command:workbench.action.closeWindow)",
+      );
+
+      controller["editNote"](replyComment);
+      replyComment.body = new vscode.MarkdownString("\t");
+      await assert.rejects(
+        controller["saveNote"](replyComment),
+        /Enter a comment before saving/,
+      );
+      assert.equal(store.all[0]!.replies![0]!.body, "Reply with <b>HTML</b>");
+      assert.equal(replyComment.mode, vscode.CommentMode.Preview);
+      assert.equal(replyComment.body.value, "Reply with <b>HTML</b>");
+
+      const tree = new TagTreeProvider(
+        controller,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri,
+      );
+      try {
+        const tagNode = tree.getChildren()[0]!;
+        const fileNode = tree.getChildren(tagNode)[0]!;
+        const noteNode = tree.getChildren(fileNode)[0]!;
+        const noteTooltip = tree.getTreeItem(noteNode).tooltip as vscode.MarkdownString;
+        assert.equal(noteTooltip.isTrusted, false);
+        assert.equal(noteTooltip.supportHtml, false);
+        const replyNode = tree.getChildren(noteNode)[0]!;
+        const replyTooltip = tree.getTreeItem(replyNode).tooltip as vscode.MarkdownString;
+        assert.equal(replyTooltip.isTrusted, false);
+        assert.equal(replyTooltip.supportHtml, false);
+      } finally {
+        tree.dispose();
+      }
+    } finally {
+      controller.dispose();
+    }
+  });
+
   test("preserves detached discussions until explicit selection or line reattachment", async () => {
     const controller = new NoteController(undefined, undefined, false);
     controller["authorName"] = async () => "Integration Author";
@@ -255,7 +379,7 @@ suite("Ghost Comments", () => {
       const storageBeforeUnchangedSave = new TextDecoder().decode(
         await vscode.workspace.fs.readFile(binding().store.storageUri),
       );
-      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
       await vscode.workspace.fs.createDirectory(storageTemporary);
       try {
         await controller["refreshAnchors"](document);
@@ -559,6 +683,50 @@ suite("Ghost Comments", () => {
     await vscode.commands.executeCommand("ghostComments.createNote");
   });
 
+  test("migrates legacy notes storage to comments storage", async () => {
+    const store = new NoteStore(folder);
+    const legacyUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json");
+    const legacyBackupUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json");
+    const note: StoredNote = {
+      id: "legacy-note",
+      filePath: "sample.ts",
+      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 6 } },
+      anchor: { text: "export", before: [], after: [] },
+      body: "Migrated comment",
+      author: "Migration Test",
+      createdAt: "2026-09-23T00:00:00.000Z",
+      updatedAt: "2026-09-23T00:00:00.000Z",
+      status: "active",
+    };
+    try {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(folder.uri, ".gc"));
+      await vscode.workspace.fs.writeFile(
+        legacyUri,
+        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+      );
+      await vscode.workspace.fs.writeFile(
+        legacyBackupUri,
+        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+      );
+
+      await store.load();
+
+      assert.deepEqual(store.all, [note]);
+      assert.deepEqual(
+        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.storageUri))).notes,
+        [note],
+      );
+      assert.deepEqual(
+        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri))).notes,
+        [note],
+      );
+      await assert.rejects(async () => vscode.workspace.fs.stat(legacyUri));
+      await assert.rejects(async () => vscode.workspace.fs.stat(legacyBackupUri));
+    } finally {
+      store.dispose();
+    }
+  });
+
   test("persists deterministic workspace notes and retains the last good state", async () => {
     const store = new NoteStore(folder);
     try {
@@ -682,7 +850,7 @@ suite("Ghost Comments", () => {
       assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Resumed version");
 
       // A failed backup leaves the primary save in place and remains due for retry.
-      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json.tmp");
+      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments-backup.json.tmp");
       await vscode.workspace.fs.createDirectory(backupTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Backup initially fails" }),
@@ -695,7 +863,7 @@ suite("Ghost Comments", () => {
 
       // A primary-write failure restores the in-memory and on-disk states.
       const primaryBeforeFailure = await read(store.storageUri);
-      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
       await vscode.workspace.fs.createDirectory(primaryTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Primary write fails" }),
