@@ -14,6 +14,10 @@ Ghost Threads uses VS Code's native Comments interface. Threads stay anchored to
 - Reply to comments, creating a thread.
 - Write multiline Markdown comments and replies in VS Code's native comment editor.
 - Share discussions through a deterministic `.gc/comments.json` file in the repository.
+- Attach a comment to selected code or an entire line.
+- Reply to comments, creating a thread.
+- Write multiline Markdown comments and replies in VS Code's native comment editor.
+- Share discussions through a deterministic `.gc/comments.json` file in the repository.
 - Follow code as lines move, with a safe reattachment flow when an anchor can no longer be found.
 - Create and apply colored tags without editing settings JSON.
 - Browse discussions by tag, file, thread, and reply from the Tagged Threads sidebar or within the Comments panel.
@@ -34,10 +38,13 @@ Ghost Threads uses VS Code's native Comments interface. Threads stay anchored to
 1. Select code, or leave the cursor on a line to annotate the whole line.
 2. Press `Cmd+Option+N` (`⌘ ⌥ N`) on macOS or `Ctrl+Alt+N` on Windows and Linux.
 3. Enter a Markdown comment and choose **Save**.
-4. Choose an existing tag, create a new tag, or press Enter on **Untagged**.
+4. Press `Cmd+Option+N` (`⌘ ⌥ N`) on macOS or `Ctrl+Alt+N` on Windows and Linux.
+5. Enter a Markdown comment and choose **Save**.
+6. Choose an existing tag, create a new tag, or press Enter on **Untagged**.
 
 > _The first comment prompts for an author name. Change it later with the **Ghost Threads: Author Name** setting. Press `⌘ ⇧ P` (macOS) or Ctrl+Shift+P (Windows/Linux), choose **Preferences: Open Settings (UI)**, then search for **Ghost Threads: Author Name**. Existing discussions keep their original authors._
 
+Saved comments appear through VS Code's gutter indicator and Comments panel. Use the comment actions to edit, reply, delete, reattach, or change the discussion tag.
 Saved comments appear through VS Code's gutter indicator and Comments panel. Use the comment actions to edit, reply, delete, reattach, or change the discussion tag.
 
 ### Change the shortcut
@@ -61,10 +68,13 @@ The default tags are To Do, Question, Important, and Done. Advanced changes such
   { "id": "todo", "label": "To Do", "color": "orange" },
   { "id": "question", "label": "Question", "color": "blue" },
   { "id": "important", "label": "Important", "color": "red" },
+  { "id": "question", "label": "Question", "color": "blue" },
+  { "id": "important", "label": "Important", "color": "red" },
   { "id": "done", "label": "Done", "color": "green" }
 ]
 ```
 
+Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `gray`. Keep an ID unchanged when renaming or recoloring a tag because comments store the ID. Removing a definition preserves existing assignments under a gray `Unknown: <id>` group.
 Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `gray`. Keep an ID unchanged when renaming or recoloring a tag because comments store the ID. Removing a definition preserves existing assignments under a gray `Unknown: <id>` group.
 
 ## Shared Storage and Backups
@@ -74,11 +84,13 @@ Each workspace folder stores discussions in `.gc/comments.json`. Commit this fil
 A passive recovery snapshot is stored at `.gc/comments-backup.json`. The first saved change creates it, and the **Ghost Threads: Backup Interval** setting controls later updates. Set the interval to `0` to disable backups.
 
 Backups are never restored automatically. To recover, preserve or remove a damaged `comments.json`, copy `comments-backup.json` to `comments.json`, and run **Developer: Reload Window**. A backup can trail the primary file by the configured interval.
+Backups are never restored automatically. To recover, preserve or remove a damaged `comments.json`, copy `comments-backup.json` to `comments.json`, and run **Developer: Reload Window**. A backup can trail the primary file by the configured interval.
 
 ## Moving and Reattaching Code
 
 Ghost Threads stores the original range and nearby text. When a file opens, it validates the original location and searches for a unique contextual match if the code moved.
 
+If no safe match exists, the discussion becomes detached. Choose **Reattach comment**, select a new location in the same workspace folder, and choose **Attach here**. Cancelling leaves the discussion detached. File renames within one workspace folder update comment paths automatically.
 If no safe match exists, the discussion becomes detached. Choose **Reattach comment**, select a new location in the same workspace folder, and choose **Attach here**. Cancelling leaves the discussion detached. File renames within one workspace folder update comment paths automatically.
 
 ## Settings
@@ -92,6 +104,7 @@ If no safe match exists, the discussion becomes detached. Choose **Reattach comm
 ## Requirements and Limitations
 
 - VS Code 1.138 or later.
+- Comments must be attached to files inside an open workspace folder.
 - Comments must be attached to files inside an open workspace folder.
 - Moving files between workspace folders does not move discussions automatically.
 - Ghost Threads does not provide resolved state, cloud synchronization, authentication, or a webview.
