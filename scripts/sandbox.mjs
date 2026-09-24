@@ -23,6 +23,6 @@ const child = spawn(executable, [
   "--skip-release-notes",
 ], { stdio: "inherit" });
 
-console.log("Ghost Comments sandbox is opening. Close its VS Code window to stop.");
+console.log("Ghost Threads sandbox is opening. Close its VS Code window to stop.");
 const [code] = await once(child, "exit");
 process.exitCode = code ?? 1;

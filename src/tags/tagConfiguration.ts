@@ -7,7 +7,7 @@ import type { TagColor, TagDefinition } from "./tagDefinitions";
 
 export function configuredTags(): TagDefinition[] {
   return parseTagDefinitions(
-    vscode.workspace.getConfiguration("ghostComments").get<unknown>("tags", DEFAULT_TAGS),
+    vscode.workspace.getConfiguration("ghostThreads").get<unknown>("tags", DEFAULT_TAGS),
   );
 }
 

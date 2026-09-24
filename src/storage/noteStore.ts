@@ -35,7 +35,7 @@ export class NoteStore implements vscode.Disposable {
     private readonly backupState?: BackupState,
     private readonly backupIntervalProvider: () => number = () =>
       vscode.workspace
-        .getConfiguration("ghostComments")
+        .getConfiguration("ghostThreads")
         .get<number>("backupInterval", DEFAULT_BACKUP_INTERVAL),
   ) {
     this.watcher = vscode.workspace.createFileSystemWatcher(
@@ -235,7 +235,7 @@ export class NoteStore implements vscode.Disposable {
   }
 
   private get backupStateKey(): string {
-    return `ghostComments.backupChangeCount:${this.workspaceFolder.uri.toString()}`;
+    return `ghostThreads.backupChangeCount:${this.workspaceFolder.uri.toString()}`;
   }
 
   private backupCount(): number {
@@ -321,7 +321,7 @@ export class NoteStore implements vscode.Disposable {
       }
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not reload ${this.workspaceFolder.name}/.gc/comments.json: ${message}`,
+        `Ghost Threads could not reload ${this.workspaceFolder.name}/.gc/comments.json: ${message}`,
       );
     }
   }

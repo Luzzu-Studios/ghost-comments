@@ -70,7 +70,7 @@ function stringArray(value: unknown): value is string[] {
 export function parseNoteFile(text: string): NoteFile {
   const root: unknown = JSON.parse(text);
   if (!isObject(root) || root.schemaVersion !== NOTE_SCHEMA_VERSION || !Array.isArray(root.notes)) {
-    throw new Error("Expected Ghost Comments note schema version 1.");
+    throw new Error("Expected Ghost Threads note schema version 1.");
   }
   const ids = new Set<string>();
   const notes = root.notes.map((value: unknown, index): StoredNote => {
@@ -79,7 +79,7 @@ export function parseNoteFile(text: string): NoteFile {
     }
     const id = requiredString(value.id, index, "id");
     if (ids.has(id)) {
-      throw new Error("Ghost Comments note IDs must be unique.");
+      throw new Error("Ghost Threads note IDs must be unique.");
     }
     ids.add(id);
     const filePath = requiredString(value.filePath, index, "filePath");

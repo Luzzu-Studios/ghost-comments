@@ -8,9 +8,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const tagTree = new TagTreeProvider(controller, context.extensionUri);
   context.subscriptions.push(
     tagTree,
-    vscode.window.registerTreeDataProvider("ghostComments.tags", tagTree),
+    vscode.window.registerTreeDataProvider("ghostThreads.tags", tagTree),
     vscode.commands.registerCommand(
-      "ghostComments.revealDiscussion",
+      "ghostThreads.revealDiscussion",
       (reference) => controller.revealDiscussion(reference),
     ),
   );

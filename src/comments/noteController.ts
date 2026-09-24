@@ -103,8 +103,8 @@ export class NoteController implements vscode.Disposable {
     registerCommands = true,
   ) {
     this.controller = vscode.comments.createCommentController(
-      "ghostComments",
-      "Ghost Comments",
+      "ghostThreads",
+      "Ghost Threads",
     );
     this.controller.options = {
       prompt: "Reply…",
@@ -113,69 +113,69 @@ export class NoteController implements vscode.Disposable {
     this.controller.commentingRangeProvider = {
       provideCommentingRanges: () => [],
     };
-    this.attachmentStatus.text = "$(link) Ghost Comments: Attach here";
+    this.attachmentStatus.text = "$(link) Ghost Threads: Attach here";
     this.attachmentStatus.tooltip =
       "Select code or place the cursor on a line, then click to attach the detached note.";
-    this.attachmentStatus.command = "ghostComments.attachHere";
+    this.attachmentStatus.command = "ghostThreads.attachHere";
     this.subscriptions.push(this.controller, this.attachmentStatus);
     if (registerCommands) {
       this.subscriptions.push(
-        vscode.commands.registerCommand("ghostComments.createNote", () =>
+        vscode.commands.registerCommand("ghostThreads.createNote", () =>
           this.run(() => this.createNote()),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.submitNote",
+          "ghostThreads.submitNote",
           (reply: vscode.CommentReply) => this.run(() => this.submitNote(reply)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.replyNote",
+          "ghostThreads.replyNote",
           (reply: vscode.CommentReply) => this.run(() => this.replyNote(reply)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.cancelNote",
+          "ghostThreads.cancelNote",
           (reply: vscode.CommentReply) => this.run(() => this.cancelNote(reply)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.editNote",
+          "ghostThreads.editNote",
           (comment: NoteComment) => this.run(() => this.editNote(comment)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.saveNote",
+          "ghostThreads.saveNote",
           (comment: NoteComment) => this.run(() => this.saveNote(comment)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.cancelEdit",
+          "ghostThreads.cancelEdit",
           (comment: NoteComment) => this.run(() => this.cancelEdit(comment)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.deleteNote",
+          "ghostThreads.deleteNote",
           (comment: NoteComment) => this.run(() => this.deleteNote(comment)),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.reattachNote",
+          "ghostThreads.reattachNote",
           (thread: vscode.CommentThread) =>
             this.run(() => this.reattachNote(thread)),
         ),
-        vscode.commands.registerCommand("ghostComments.attachHere", () =>
+        vscode.commands.registerCommand("ghostThreads.attachHere", () =>
           this.run(() => this.attachHere()),
         ),
-        vscode.commands.registerCommand("ghostComments.cancelReattach", () =>
+        vscode.commands.registerCommand("ghostThreads.cancelReattach", () =>
           this.cancelReattach(),
         ),
         vscode.commands.registerCommand(
-          "ghostComments.setTag",
+          "ghostThreads.setTag",
           (target?: vscode.CommentThread | DiscussionReference) =>
             this.run(() => this.setTag(target)),
         ),
         ...TAG_COLORS.map((color) =>
           vscode.commands.registerCommand(
-            `ghostComments.setTag.${color}`,
+            `ghostThreads.setTag.${color}`,
             (target?: vscode.CommentThread | DiscussionReference) =>
               this.run(() => this.setTag(target)),
           )
         ),
         vscode.commands.registerCommand(
-          "ghostComments.clearTag",
+          "ghostThreads.clearTag",
           (target?: vscode.CommentThread | DiscussionReference) =>
             this.run(() => this.clearTag(target)),
         ),
@@ -222,7 +222,7 @@ export class NoteController implements vscode.Disposable {
         }),
       ),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (!event.affectsConfiguration("ghostComments.tags")) {
+        if (!event.affectsConfiguration("ghostThreads.tags")) {
           return;
         }
         for (const store of this.stores.values()) {
@@ -283,7 +283,7 @@ export class NoteController implements vscode.Disposable {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not load ${folder.name}/.gc/comments.json: ${message}`,
+        `Ghost Threads could not load ${folder.name}/.gc/comments.json: ${message}`,
       );
     }
   }
@@ -311,7 +311,7 @@ export class NoteController implements vscode.Disposable {
     const store = this.managedStore(uri);
     if (!store) {
       throw new Error(
-        "Ghost Comments notes can only be attached to files inside an open workspace folder.",
+        "Ghost Threads can only be attached to files inside an open workspace folder.",
       );
     }
     return store;
@@ -351,11 +351,11 @@ export class NoteController implements vscode.Disposable {
       [],
     );
     thread.contextValue = "draft";
-    thread.label = "Add a Ghost Comment";
+    thread.label = "Add a Ghost Thread";
     // An editing comment receives native editor focus when the draft expands.
     // An empty reply form can expand while keyboard focus stays in the source.
     const draft = new NoteComment(
-      randomUUID(), "", vscode.workspace.getConfiguration("ghostComments").get<string>("authorName", "").trim() || "You",
+      randomUUID(), "", vscode.workspace.getConfiguration("ghostThreads").get<string>("authorName", "").trim() || "You",
       thread, new Date().toISOString(), false,
     );
     draft.mode = vscode.CommentMode.Editing;
@@ -423,11 +423,11 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async authorName(): Promise<string | undefined> {
-    const configuration = vscode.workspace.getConfiguration("ghostComments");
+    const configuration = vscode.workspace.getConfiguration("ghostThreads");
     let author = configuration.get<string>("authorName", "").trim();
     if (!author) {
       const entered = await vscode.window.showInputBox({
-        prompt: "Choose the author name stored with your Ghost Comments notes",
+        prompt: "Choose the author name stored with your Ghost Threads",
         placeHolder: "Display name",
         validateInput: (value) =>
           value.trim() ? undefined : "Enter a display name.",
@@ -484,7 +484,7 @@ export class NoteController implements vscode.Disposable {
       })),
       { choiceType: "create", label: "$(add) Create New Tag…" },
     ];
-    picker.placeholder = "Choose an optional Ghost Comments tag";
+    picker.placeholder = "Choose an optional Ghost Threads tag";
     picker.activeItems = [untagged];
     return new Promise((resolve) => {
       picker.onDidAccept(() => {
@@ -516,7 +516,7 @@ export class NoteController implements vscode.Disposable {
     if (!color) {
       return undefined;
     }
-    const configuration = vscode.workspace.getConfiguration("ghostComments");
+    const configuration = vscode.workspace.getConfiguration("ghostThreads");
     const current = configuration.get<unknown>("tags", DEFAULT_TAGS);
     const definitions = parseTagDefinitions(current);
     if (tagNameExists(label, definitions)) {
@@ -539,7 +539,7 @@ export class NoteController implements vscode.Disposable {
 
   private promptTagName(): Thenable<string | undefined> {
     return vscode.window.showInputBox({
-      prompt: "Name the new Ghost Comments tag",
+      prompt: "Name the new Ghost Threads tag",
       placeHolder: "Tag name",
       validateInput: (value) => {
         if (!value.trim()) {
@@ -554,7 +554,7 @@ export class NoteController implements vscode.Disposable {
   }
 
   private async saveTagDefinition(definitions: unknown[]): Promise<void> {
-    await vscode.workspace.getConfiguration("ghostComments").update(
+    await vscode.workspace.getConfiguration("ghostThreads").update(
       "tags", definitions, vscode.ConfigurationTarget.Workspace,
     );
   }
@@ -589,7 +589,7 @@ export class NoteController implements vscode.Disposable {
         description: `${binding.store.workspaceFolder.name}/${binding.note.filePath}`,
         binding,
       })),
-      { placeHolder: "Choose a Ghost Comments discussion" },
+      { placeHolder: "Choose a Ghost Threads discussion" },
     );
     return selected?.binding;
   }
@@ -810,7 +810,7 @@ export class NoteController implements vscode.Disposable {
     this.attachmentStatus.show();
     await vscode.commands.executeCommand(
       "setContext",
-      "ghostComments.reattaching",
+      "ghostThreads.reattaching",
       true,
     );
     const promptId = ++this.attachmentPromptId;
@@ -858,7 +858,7 @@ export class NoteController implements vscode.Disposable {
     this.attachmentStatus.hide();
     void vscode.commands.executeCommand(
       "setContext",
-      "ghostComments.reattaching",
+      "ghostThreads.reattaching",
       false,
     );
   }
