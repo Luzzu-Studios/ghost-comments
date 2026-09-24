@@ -11,6 +11,7 @@ import {
 import { displayTag } from "./tagDefinitions";
 import type { DisplayTag } from "./tagDefinitions";
 import type { StoredReply } from "../model/note";
+import { safeMarkdown } from "../comments/noteComment";
 
 interface TagNode {
   kind: "tag";
@@ -82,7 +83,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
       const item = new vscode.TreeItem(notePreview(element.reply.body));
       item.id = JSON.stringify(["reply", element.workspaceUri, element.noteId, element.reply.id]);
       item.description = element.reply.author;
-      item.tooltip = new vscode.MarkdownString(element.reply.body);
+      item.tooltip = safeMarkdown(element.reply.body);
       item.iconPath = new vscode.ThemeIcon("comment");
       item.contextValue = "ghostComments.reply";
       item.command = {
@@ -103,7 +104,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
     item.description = `${note.author} · line ${note.range.start.line + 1}${
       note.status === "stale" ? " · stale" : ""
     }`;
-    item.tooltip = new vscode.MarkdownString(note.body);
+    item.tooltip = safeMarkdown(note.body);
     item.iconPath = new vscode.ThemeIcon(
       note.status === "stale" ? "warning" : "comment-discussion",
     );

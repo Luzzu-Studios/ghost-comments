@@ -85,7 +85,8 @@
       },
       {
         "command": "ghostComments.saveNote",
-        "title": "Save"
+        "title": "Save",
+        "enablement": "!commentIsEmpty"
       },
       {
         "command": "ghostComments.cancelEdit",
