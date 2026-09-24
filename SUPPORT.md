@@ -10,6 +10,6 @@ For a bug report, include:
 - Expected and actual behavior
 - Relevant error messages from **Help: Toggle Developer Tools**
 
-Remove private source code, user names, paths, and note text before attaching screenshots, logs, or `.gc/notes.json` content.
+Remove private source code, user names, paths, and comment text before attaching screenshots, logs, or `.gc/comments.json` content.
 
 For usage and storage details, see the [README](https://github.com/Luzzu-Studios/ghost-comments#readme). For implementation and local development, see the [development guide](https://github.com/Luzzu-Studios/ghost-comments/blob/main/docs/README.md).

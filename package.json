@@ -40,6 +40,7 @@
   },
   "icon": "assets/icon.png",
   "activationEvents": [
+    "workspaceContains:**/.gc/comments.json",
     "workspaceContains:**/.gc/notes.json",
     "onView:ghostComments.tags"
   ],
@@ -384,7 +385,7 @@
           "default": 10,
           "minimum": 0,
           "scope": "window",
-          "description": "Number of saved note changes between updates to .gc/notes-backup.json. The first saved change creates the backup; 0 disables automatic backups."
+          "description": "Number of saved comment changes between updates to .gc/comments-backup.json. The first saved change creates the backup; 0 disables automatic backups."
         },
         "ghostComments.tags": {
           "type": "array",

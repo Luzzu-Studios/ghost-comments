@@ -3,8 +3,9 @@ import { parseNoteFile, serializeNoteFile } from "../model/note";
 import type { StoredNote } from "../model/note";
 
 const STORAGE_DIRECTORY = ".gc";
-const STORAGE_FILE = "notes.json";
-const BACKUP_FILE = "notes-backup.json";
+const STORAGE_FILE = "comments.json";
+const LEGACY_STORAGE_FILE = "notes.json";
+const BACKUP_FILE = "comments-backup.json";
 const DEFAULT_BACKUP_INTERVAL = 10;
 
 export interface BackupState {
@@ -49,6 +50,18 @@ export class NoteStore implements vscode.Disposable {
     return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, STORAGE_FILE);
   }
 
+  private get legacyStorageUri(): vscode.Uri {
+    return vscode.Uri.joinPath(
+      this.workspaceFolder.uri,
+      STORAGE_DIRECTORY,
+      LEGACY_STORAGE_FILE,
+    );
+  }
+
+  private get legacyBackupUri(): vscode.Uri {
+    return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, "notes-backup.json");
+  }
+
   get backupUri(): vscode.Uri {
     return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, BACKUP_FILE);
   }
@@ -63,12 +76,32 @@ export class NoteStore implements vscode.Disposable {
       text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.storageUri));
     } catch (error) {
       if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
-        this.replace([]);
+        await this.loadLegacyStorage();
         return;
       }
       throw error;
     }
     this.replace(parseNoteFile(text).notes);
+  }
+
+  private async loadLegacyStorage(): Promise<void> {
+    let text: string;
+    try {
+      text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.legacyStorageUri));
+    } catch (error) {
+      if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+        this.replace([]);
+        return;
+      }
+      throw error;
+    }
+
+    const notes = parseNoteFile(text).notes;
+    await vscode.workspace.fs.rename(this.legacyStorageUri, this.storageUri, { overwrite: false });
+    if (!(await this.fileExists(this.backupUri)) && await this.fileExists(this.legacyBackupUri)) {
+      await vscode.workspace.fs.rename(this.legacyBackupUri, this.backupUri, { overwrite: false });
+    }
+    this.replace(notes);
   }
 
   async upsert(note: StoredNote): Promise<void> {
@@ -288,7 +321,7 @@ export class NoteStore implements vscode.Disposable {
       }
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not reload ${this.workspaceFolder.name}/.gc/notes.json: ${message}`,
+        `Ghost Comments could not reload ${this.workspaceFolder.name}/.gc/comments.json: ${message}`,
       );
     }
   }

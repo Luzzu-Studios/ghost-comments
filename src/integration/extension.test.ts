@@ -255,7 +255,7 @@ suite("Ghost Comments", () => {
       const storageBeforeUnchangedSave = new TextDecoder().decode(
         await vscode.workspace.fs.readFile(binding().store.storageUri),
       );
-      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
       await vscode.workspace.fs.createDirectory(storageTemporary);
       try {
         await controller["refreshAnchors"](document);
@@ -559,6 +559,50 @@ suite("Ghost Comments", () => {
     await vscode.commands.executeCommand("ghostComments.createNote");
   });
 
+  test("migrates legacy notes storage to comments storage", async () => {
+    const store = new NoteStore(folder);
+    const legacyUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json");
+    const legacyBackupUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json");
+    const note: StoredNote = {
+      id: "legacy-note",
+      filePath: "sample.ts",
+      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 6 } },
+      anchor: { text: "export", before: [], after: [] },
+      body: "Migrated comment",
+      author: "Migration Test",
+      createdAt: "2026-09-23T00:00:00.000Z",
+      updatedAt: "2026-09-23T00:00:00.000Z",
+      status: "active",
+    };
+    try {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(folder.uri, ".gc"));
+      await vscode.workspace.fs.writeFile(
+        legacyUri,
+        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+      );
+      await vscode.workspace.fs.writeFile(
+        legacyBackupUri,
+        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+      );
+
+      await store.load();
+
+      assert.deepEqual(store.all, [note]);
+      assert.deepEqual(
+        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.storageUri))).notes,
+        [note],
+      );
+      assert.deepEqual(
+        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri))).notes,
+        [note],
+      );
+      await assert.rejects(async () => vscode.workspace.fs.stat(legacyUri));
+      await assert.rejects(async () => vscode.workspace.fs.stat(legacyBackupUri));
+    } finally {
+      store.dispose();
+    }
+  });
+
   test("persists deterministic workspace notes and retains the last good state", async () => {
     const store = new NoteStore(folder);
     try {
@@ -682,7 +726,7 @@ suite("Ghost Comments", () => {
       assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Resumed version");
 
       // A failed backup leaves the primary save in place and remains due for retry.
-      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json.tmp");
+      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments-backup.json.tmp");
       await vscode.workspace.fs.createDirectory(backupTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Backup initially fails" }),
@@ -695,7 +739,7 @@ suite("Ghost Comments", () => {
 
       // A primary-write failure restores the in-memory and on-disk states.
       const primaryBeforeFailure = await read(store.storageUri);
-      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json.tmp");
+      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
       await vscode.workspace.fs.createDirectory(primaryTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Primary write fails" }),

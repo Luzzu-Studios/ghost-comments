@@ -283,7 +283,7 @@ export class NoteController implements vscode.Disposable {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not load ${folder.name}/.gc/notes.json: ${message}`,
+        `Ghost Comments could not load ${folder.name}/.gc/comments.json: ${message}`,
       );
     }
   }

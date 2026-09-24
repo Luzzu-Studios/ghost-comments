@@ -8,9 +8,12 @@ Ghost Comments uses VS Code's native Comments interface. Notes stay anchored to 
 
 ## Features
 
-- Attach a discussion to selected code or an entire line.
+- Attach a comment to selected code or an entire line.
+- Reply to comments, creating a thread.
+- Use Markdown in comments.
+
 - Write multiline Markdown notes and replies in VS Code's native comment editor.
-- Share discussions through a deterministic `.gc/notes.json` file in the repository.
+- Share discussions through a deterministic `.gc/comments.json` file in the repository.
 - Follow code as lines move, with a safe reattachment flow when an anchor can no longer be found.
 - Create and apply colored tags without editing settings JSON.
 - Browse discussions by tag, file, note, and reply from the Tagged Comments sidebar.
@@ -53,11 +56,11 @@ Supported colors are `red`, `orange`, `yellow`, `green`, `blue`, `purple`, and `
 
 ## Shared Storage and Backups
 
-Each workspace folder stores discussions in `.gc/notes.json`. Commit this file when discussions should be shared with the repository team. Ghost Comments watches it for changes from editors and Git operations.
+Each workspace folder stores discussions in `.gc/comments.json`. Commit this file when discussions should be shared with the repository team. Ghost Comments watches it for changes from editors and Git operations. Existing `.gc/notes.json` files and their backups are moved to the new names when first opened.
 
-A passive recovery snapshot is stored at `.gc/notes-backup.json`. The first saved change creates it, and the **Ghost Comments: Backup Interval** setting controls later updates. Set the interval to `0` to disable backups.
+A passive recovery snapshot is stored at `.gc/comments-backup.json`. The first saved change creates it, and the **Ghost Comments: Backup Interval** setting controls later updates. Set the interval to `0` to disable backups.
 
-Backups are never restored automatically. To recover, preserve or remove a damaged `notes.json`, copy `notes-backup.json` to `notes.json`, and run **Developer: Reload Window**. A backup can trail the primary file by the configured interval.
+Backups are never restored automatically. To recover, preserve or remove a damaged `comments.json`, copy `comments-backup.json` to `comments.json`, and run **Developer: Reload Window**. A backup can trail the primary file by the configured interval.
 
 ## Moving and Reattaching Code
 
@@ -67,11 +70,11 @@ If no safe match exists, the discussion becomes detached. Choose **Reattach Note
 
 ## Settings
 
-| Setting | Purpose | Default |
-| --- | --- | --- |
-| `ghostComments.authorName` | Author stored with new notes and replies | Prompt on first use |
-| `ghostComments.backupInterval` | Saved changes between backup updates; `0` disables backups | `10` |
-| `ghostComments.tags` | Ordered tag definitions and colors | Four built-in tags |
+| Setting                        | Purpose                                                    | Default             |
+| ------------------------------ | ---------------------------------------------------------- | ------------------- |
+| `ghostComments.authorName`     | Author stored with new notes and replies                   | Prompt on first use |
+| `ghostComments.backupInterval` | Saved changes between backup updates; `0` disables backups | `10`                |
+| `ghostComments.tags`           | Ordered tag definitions and colors                         | Four built-in tags  |
 
 ## Requirements and Limitations
 
@@ -79,7 +82,7 @@ If no safe match exists, the discussion becomes detached. Choose **Reattach Note
 - Notes must be attached to files inside an open workspace folder.
 - Moving files between workspace folders does not move discussions automatically.
 - Ghost Comments does not provide resolved state, cloud synchronization, authentication, or a webview.
-- Teams sharing `.gc/notes.json` should use a reply-capable Ghost Comments version before editing discussions.
+- Teams sharing `.gc/comments.json` should use a reply-capable Ghost Comments version before editing discussions.
 
 ## Privacy
 
