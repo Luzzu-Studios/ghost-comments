@@ -2,7 +2,7 @@
   "name": "ghost-threads",
   "displayName": "Ghost Threads",
   "description": "Attach durable, repository-shared notes to code.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "LuzzuStudios",
   "private": true,
   "author": {
@@ -40,7 +40,6 @@
   },
   "icon": "assets/icon.png",
   "activationEvents": [
-    "workspaceContains:**/.gc/comments.json",
     "workspaceContains:**/.gc/comments.json",
     "workspaceContains:**/.gc/notes.json",
     "onView:ghostThreads.tags"
@@ -387,7 +386,6 @@
           "default": 10,
           "minimum": 0,
           "scope": "window",
-          "description": "Number of saved comment changes between updates to .gc/comments-backup.json. The first saved change creates the backup; 0 disables automatic backups."
           "description": "Number of saved comment changes between updates to .gc/comments-backup.json. The first saved change creates the backup; 0 disables automatic backups."
         },
         "ghostThreads.tags": {

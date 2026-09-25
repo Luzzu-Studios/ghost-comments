@@ -10,7 +10,6 @@ import { configuredTags, tagPickerIcon } from "../tags/tagConfiguration";
 import { DEFAULT_TAGS, displayTag, nativeTagLabel, newTagId, parseTagDefinitions, tagNameExists, TAG_COLORS } from "../tags/tagDefinitions";
 import type { TagColor, TagDefinition } from "../tags/tagDefinitions";
 import { NoteComment, safeMarkdown, validatedCommentBody } from "./noteComment";
-import { NoteComment, safeMarkdown, validatedCommentBody } from "./noteComment";
 
 interface Binding {
   key: string;
@@ -372,15 +371,7 @@ export class NoteController implements vscode.Disposable {
   private async submitNote(reply: vscode.CommentReply): Promise<void> {
     const thread = reply.thread;
     if (!this.drafts.has(thread) || !thread.range) {
-    if (!this.drafts.has(thread) || !thread.range) {
       return;
-    }
-    let body: string;
-    try {
-      body = validatedCommentBody(reply.text);
-    } catch (error) {
-      this.discardDraft(thread);
-      throw error;
     }
     let body: string;
     try {
@@ -400,7 +391,6 @@ export class NoteController implements vscode.Disposable {
     const selectedTag = await this.pickTag();
     if (selectedTag === undefined) {
       this.keepDraftEditing(thread, body);
-      this.keepDraftEditing(thread, body);
       return;
     }
     const note: StoredNote = {
@@ -418,18 +408,6 @@ export class NoteController implements vscode.Disposable {
     this.drafts.delete(thread);
     thread.dispose();
     await store.upsert(note);
-  }
-
-  private keepDraftEditing(
-    thread: vscode.CommentThread,
-    body: string,
-  ): void {
-    const draft = thread.comments[0] as NoteComment;
-    draft.savedBody = body;
-    draft.body = safeMarkdown(body);
-    draft.mode = vscode.CommentMode.Editing;
-    thread.comments = [draft];
-    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
   }
 
   private keepDraftEditing(
@@ -673,7 +651,6 @@ export class NoteController implements vscode.Disposable {
 
   private async replyNote(reply: vscode.CommentReply): Promise<void> {
     const body = validatedCommentBody(reply.text);
-    const body = validatedCommentBody(reply.text);
     const binding = this.requireBinding(reply.thread);
     const author = await this.authorName();
     if (!author) {
@@ -708,17 +685,6 @@ export class NoteController implements vscode.Disposable {
       this.draftAwaitingEditor = undefined;
     }
     thread.dispose();
-    this.discardDraft(reply.thread);
-  }
-
-  private discardDraft(thread: vscode.CommentThread): void {
-    if (!this.drafts.delete(thread)) {
-      return;
-    }
-    if (this.draftAwaitingEditor === thread) {
-      this.draftAwaitingEditor = undefined;
-    }
-    thread.dispose();
   }
 
   private requireBinding(thread: vscode.CommentThread): Binding {
@@ -742,7 +708,6 @@ export class NoteController implements vscode.Disposable {
   private editNote(comment: NoteComment): void {
     this.requireBinding(comment.parent);
     comment.body = safeMarkdown(comment.savedBody);
-    comment.body = safeMarkdown(comment.savedBody);
     comment.mode = vscode.CommentMode.Editing;
     comment.parent.comments = [...comment.parent.comments];
   }
@@ -750,17 +715,9 @@ export class NoteController implements vscode.Disposable {
   private async saveNote(comment: NoteComment): Promise<void> {
     if (this.drafts.has(comment.parent)) {
       await this.submitNote({ thread: comment.parent, text: comment.body.value });
-      await this.submitNote({ thread: comment.parent, text: comment.body.value });
       return;
     }
     const binding = this.requireBinding(comment.parent);
-    let body: string;
-    try {
-      body = validatedCommentBody(comment.body);
-    } catch (error) {
-      comment.restore();
-      comment.parent.comments = [...comment.parent.comments];
-      throw error;
     let body: string;
     try {
       body = validatedCommentBody(comment.body);

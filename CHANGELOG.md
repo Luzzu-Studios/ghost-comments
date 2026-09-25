@@ -2,13 +2,10 @@
 
 All notable changes to Ghost Threads are documented in this file.
 
-## Unreleased
+## 1.0.1 - 2026-09-25
 
-- Rename shared discussion storage to `.gc/comments.json` and migrate existing `.gc/notes.json` files on first open.
-
-## Unreleased
-
-- Rename shared discussion storage to `.gc/comments.json` and migrate existing `.gc/notes.json` files on first open.
+- Update logo.png
+- Minor changes
 
 ## 1.0.0 - 2026-09-23
 

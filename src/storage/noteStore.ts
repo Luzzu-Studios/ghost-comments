@@ -6,9 +6,6 @@ const STORAGE_DIRECTORY = ".gc";
 const STORAGE_FILE = "comments.json";
 const LEGACY_STORAGE_FILE = "notes.json";
 const BACKUP_FILE = "comments-backup.json";
-const STORAGE_FILE = "comments.json";
-const LEGACY_STORAGE_FILE = "notes.json";
-const BACKUP_FILE = "comments-backup.json";
 const DEFAULT_BACKUP_INTERVAL = 10;
 
 export interface BackupState {
@@ -86,22 +83,6 @@ export class NoteStore implements vscode.Disposable {
     );
   }
 
-  private get legacyStorageUri(): vscode.Uri {
-    return vscode.Uri.joinPath(
-      this.workspaceFolder.uri,
-      STORAGE_DIRECTORY,
-      LEGACY_STORAGE_FILE,
-    );
-  }
-
-  private get legacyBackupUri(): vscode.Uri {
-    return vscode.Uri.joinPath(
-      this.workspaceFolder.uri,
-      STORAGE_DIRECTORY,
-      "notes-backup.json",
-    );
-  }
-
   get backupUri(): vscode.Uri {
     return vscode.Uri.joinPath(
       this.workspaceFolder.uri,
@@ -126,44 +107,11 @@ export class NoteStore implements vscode.Disposable {
         error.code === "FileNotFound"
       ) {
         await this.loadLegacyStorage();
-        await this.loadLegacyStorage();
         return;
       }
       throw error;
     }
     this.replace(parseNoteFile(text).notes);
-  }
-
-  private async loadLegacyStorage(): Promise<void> {
-    let text: string;
-    try {
-      text = new TextDecoder().decode(
-        await vscode.workspace.fs.readFile(this.legacyStorageUri),
-      );
-    } catch (error) {
-      if (
-        error instanceof vscode.FileSystemError &&
-        error.code === "FileNotFound"
-      ) {
-        this.replace([]);
-        return;
-      }
-      throw error;
-    }
-
-    const notes = parseNoteFile(text).notes;
-    await vscode.workspace.fs.rename(this.legacyStorageUri, this.storageUri, {
-      overwrite: false,
-    });
-    if (
-      !(await this.fileExists(this.backupUri)) &&
-      (await this.fileExists(this.legacyBackupUri))
-    ) {
-      await vscode.workspace.fs.rename(this.legacyBackupUri, this.backupUri, {
-        overwrite: false,
-      });
-    }
-    this.replace(notes);
   }
 
   private async loadLegacyStorage(): Promise<void> {

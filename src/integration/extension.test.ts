@@ -448,11 +448,6 @@ suite("Ghost Threads", () => {
         ".gc",
         "comments.json.tmp",
       );
-      const storageTemporary = vscode.Uri.joinPath(
-        folder.uri,
-        ".gc",
-        "comments.json.tmp",
-      );
       await vscode.workspace.fs.createDirectory(storageTemporary);
       try {
         await controller["refreshAnchors"](document);
@@ -996,11 +991,6 @@ suite("Ghost Threads", () => {
         ".gc",
         "comments-backup.json.tmp",
       );
-      const backupTemporary = vscode.Uri.joinPath(
-        folder.uri,
-        ".gc",
-        "comments-backup.json.tmp",
-      );
       await vscode.workspace.fs.createDirectory(backupTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Backup initially fails" }),
@@ -1022,11 +1012,6 @@ suite("Ghost Threads", () => {
 
       // A primary-write failure restores the in-memory and on-disk states.
       const primaryBeforeFailure = await read(store.storageUri);
-      const primaryTemporary = vscode.Uri.joinPath(
-        folder.uri,
-        ".gc",
-        "comments.json.tmp",
-      );
       const primaryTemporary = vscode.Uri.joinPath(
         folder.uri,
         ".gc",
