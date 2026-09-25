@@ -15,7 +15,11 @@ export interface BackupState {
 
 class PrimaryWriteError extends Error {
   constructor(readonly originalError: unknown) {
-    super(originalError instanceof Error ? originalError.message : String(originalError));
+    super(
+      originalError instanceof Error
+        ? originalError.message
+        : String(originalError),
+    );
     this.name = "PrimaryWriteError";
   }
 }
@@ -35,19 +39,32 @@ export class NoteStore implements vscode.Disposable {
     private readonly backupState?: BackupState,
     private readonly backupIntervalProvider: () => number = () =>
       vscode.workspace
-        .getConfiguration("ghostComments")
+        .getConfiguration("ghostThreads")
         .get<number>("backupInterval", DEFAULT_BACKUP_INTERVAL),
   ) {
     this.watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(workspaceFolder, `${STORAGE_DIRECTORY}/${STORAGE_FILE}`),
+      new vscode.RelativePattern(
+        workspaceFolder,
+        `${STORAGE_DIRECTORY}/${STORAGE_FILE}`,
+      ),
     );
-    this.watcher.onDidCreate(() => { void this.reload(); });
-    this.watcher.onDidChange(() => { void this.reload(); });
-    this.watcher.onDidDelete(() => { void this.reload(); });
+    this.watcher.onDidCreate(() => {
+      void this.reload();
+    });
+    this.watcher.onDidChange(() => {
+      void this.reload();
+    });
+    this.watcher.onDidDelete(() => {
+      void this.reload();
+    });
   }
 
   get storageUri(): vscode.Uri {
-    return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, STORAGE_FILE);
+    return vscode.Uri.joinPath(
+      this.workspaceFolder.uri,
+      STORAGE_DIRECTORY,
+      STORAGE_FILE,
+    );
   }
 
   private get legacyStorageUri(): vscode.Uri {
@@ -59,11 +76,19 @@ export class NoteStore implements vscode.Disposable {
   }
 
   private get legacyBackupUri(): vscode.Uri {
-    return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, "notes-backup.json");
+    return vscode.Uri.joinPath(
+      this.workspaceFolder.uri,
+      STORAGE_DIRECTORY,
+      "notes-backup.json",
+    );
   }
 
   get backupUri(): vscode.Uri {
-    return vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY, BACKUP_FILE);
+    return vscode.Uri.joinPath(
+      this.workspaceFolder.uri,
+      STORAGE_DIRECTORY,
+      BACKUP_FILE,
+    );
   }
 
   get all(): readonly StoredNote[] {
@@ -73,9 +98,14 @@ export class NoteStore implements vscode.Disposable {
   async load(): Promise<void> {
     let text: string;
     try {
-      text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.storageUri));
+      text = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(this.storageUri),
+      );
     } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === "FileNotFound"
+      ) {
         await this.loadLegacyStorage();
         return;
       }
@@ -87,9 +117,14 @@ export class NoteStore implements vscode.Disposable {
   private async loadLegacyStorage(): Promise<void> {
     let text: string;
     try {
-      text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.legacyStorageUri));
+      text = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(this.legacyStorageUri),
+      );
     } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === "FileNotFound"
+      ) {
         this.replace([]);
         return;
       }
@@ -97,9 +132,16 @@ export class NoteStore implements vscode.Disposable {
     }
 
     const notes = parseNoteFile(text).notes;
-    await vscode.workspace.fs.rename(this.legacyStorageUri, this.storageUri, { overwrite: false });
-    if (!(await this.fileExists(this.backupUri)) && await this.fileExists(this.legacyBackupUri)) {
-      await vscode.workspace.fs.rename(this.legacyBackupUri, this.backupUri, { overwrite: false });
+    await vscode.workspace.fs.rename(this.legacyStorageUri, this.storageUri, {
+      overwrite: false,
+    });
+    if (
+      !(await this.fileExists(this.backupUri)) &&
+      (await this.fileExists(this.legacyBackupUri))
+    ) {
+      await vscode.workspace.fs.rename(this.legacyBackupUri, this.backupUri, {
+        overwrite: false,
+      });
     }
     this.replace(notes);
   }
@@ -176,7 +218,10 @@ export class NoteStore implements vscode.Disposable {
     mutationRevision: number,
     previous: Map<string, StoredNote>,
   ): void {
-    if (!(error instanceof PrimaryWriteError) || this.revision !== mutationRevision) {
+    if (
+      !(error instanceof PrimaryWriteError) ||
+      this.revision !== mutationRevision
+    ) {
       return;
     }
     this.revision++;
@@ -193,21 +238,29 @@ export class NoteStore implements vscode.Disposable {
 
   private persist(): Promise<void> {
     const text = serializeNoteFile(this.all);
-    this.writeQueue = this.writeQueue.catch(() => {}).then(async () => {
-      this.ownWriteText = text;
-      const directory = vscode.Uri.joinPath(this.workspaceFolder.uri, STORAGE_DIRECTORY);
-      await vscode.workspace.fs.createDirectory(directory);
-      try {
-        await this.writeAtomically(directory, STORAGE_FILE, text);
-      } catch (error) {
-        throw new PrimaryWriteError(error);
-      }
-      await this.updateBackup(directory, text);
-    });
+    this.writeQueue = this.writeQueue
+      .catch(() => {})
+      .then(async () => {
+        this.ownWriteText = text;
+        const directory = vscode.Uri.joinPath(
+          this.workspaceFolder.uri,
+          STORAGE_DIRECTORY,
+        );
+        await vscode.workspace.fs.createDirectory(directory);
+        try {
+          await this.writeAtomically(directory, STORAGE_FILE, text);
+        } catch (error) {
+          throw new PrimaryWriteError(error);
+        }
+        await this.updateBackup(directory, text);
+      });
     return this.writeQueue;
   }
 
-  private async updateBackup(directory: vscode.Uri, text: string): Promise<void> {
+  private async updateBackup(
+    directory: vscode.Uri,
+    text: string,
+  ): Promise<void> {
     const interval = this.backupInterval();
     if (interval === 0) {
       return;
@@ -235,12 +288,13 @@ export class NoteStore implements vscode.Disposable {
   }
 
   private get backupStateKey(): string {
-    return `ghostComments.backupChangeCount:${this.workspaceFolder.uri.toString()}`;
+    return `ghostThreads.backupChangeCount:${this.workspaceFolder.uri.toString()}`;
   }
 
   private backupCount(): number {
-    const count = this.backupState?.get<number>(this.backupStateKey, 0)
-      ?? this.volatileBackupCount;
+    const count =
+      this.backupState?.get<number>(this.backupStateKey, 0) ??
+      this.volatileBackupCount;
     return Number.isInteger(count) && count >= 0 ? count : 0;
   }
 
@@ -257,7 +311,10 @@ export class NoteStore implements vscode.Disposable {
       await vscode.workspace.fs.stat(uri);
       return true;
     } catch (error) {
-      if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === "FileNotFound"
+      ) {
         return false;
       }
       throw error;
@@ -275,22 +332,34 @@ export class NoteStore implements vscode.Disposable {
     try {
       previous = await vscode.workspace.fs.readFile(destination);
     } catch (error) {
-      if (!(error instanceof vscode.FileSystemError && error.code === "FileNotFound")) {
+      if (
+        !(
+          error instanceof vscode.FileSystemError &&
+          error.code === "FileNotFound"
+        )
+      ) {
         throw error;
       }
     }
-    await vscode.workspace.fs.writeFile(temporary, new TextEncoder().encode(text));
+    await vscode.workspace.fs.writeFile(
+      temporary,
+      new TextEncoder().encode(text),
+    );
     try {
-      await vscode.workspace.fs.rename(temporary, destination, { overwrite: true });
+      await vscode.workspace.fs.rename(temporary, destination, {
+        overwrite: true,
+      });
     } catch (error) {
       if (previous && !(await this.fileExists(destination))) {
         try {
           await vscode.workspace.fs.writeFile(destination, previous);
         } catch (restoreError) {
-          const originalMessage = error instanceof Error ? error.message : String(error);
-          const restoreMessage = restoreError instanceof Error
-            ? restoreError.message
-            : String(restoreError);
+          const originalMessage =
+            error instanceof Error ? error.message : String(error);
+          const restoreMessage =
+            restoreError instanceof Error
+              ? restoreError.message
+              : String(restoreError);
           throw new Error(
             `${originalMessage} The previous ${fileName} could not be restored: ${restoreMessage}`,
           );
@@ -306,7 +375,9 @@ export class NoteStore implements vscode.Disposable {
     await this.writeQueue.catch(() => {});
     const revision = this.revision;
     try {
-      const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.storageUri));
+      const text = new TextDecoder().decode(
+        await vscode.workspace.fs.readFile(this.storageUri),
+      );
       if (revision !== this.revision || text === this.ownWriteText) {
         return;
       }
@@ -315,13 +386,16 @@ export class NoteStore implements vscode.Disposable {
       if (revision !== this.revision) {
         return;
       }
-      if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === "FileNotFound"
+      ) {
         this.replace([]);
         return;
       }
       const message = error instanceof Error ? error.message : String(error);
       void vscode.window.showErrorMessage(
-        `Ghost Comments could not reload ${this.workspaceFolder.name}/.gc/comments.json: ${message}`,
+        `Ghost Threads could not reload ${this.workspaceFolder.name}/.gc/comments.json: ${message}`,
       );
     }
   }

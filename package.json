@@ -1,8 +1,8 @@
 {
-  "name": "ghost-comments",
-  "displayName": "Ghost Comments",
+  "name": "ghost-threads",
+  "displayName": "Ghost Threads",
   "description": "Attach durable, repository-shared notes to code.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "LuzzuStudios",
   "private": true,
   "author": {
@@ -12,11 +12,11 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Luzzu-Studios/ghost-comments.git"
+    "url": "https://github.com/Luzzu-Studios/ghost-threads.git"
   },
-  "homepage": "https://github.com/Luzzu-Studios/ghost-comments#readme",
+  "homepage": "https://github.com/Luzzu-Studios/ghost-threads#readme",
   "bugs": {
-    "url": "https://github.com/Luzzu-Studios/ghost-comments/issues"
+    "url": "https://github.com/Luzzu-Studios/ghost-threads/issues"
   },
   "engines": {
     "vscode": "^1.138.0"
@@ -42,165 +42,165 @@
   "activationEvents": [
     "workspaceContains:**/.gc/comments.json",
     "workspaceContains:**/.gc/notes.json",
-    "onView:ghostComments.tags"
+    "onView:ghostThreads.tags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "ghostComments",
-          "title": "Ghost Comments",
-          "icon": "assets/ghost-comments-view-v3.svg"
+          "id": "ghostThreads",
+          "title": "Ghost Threads",
+          "icon": "assets/ghost-threads-view-v3.svg"
         }
       ]
     },
     "views": {
-      "ghostComments": [
+      "ghostThreads": [
         {
-          "id": "ghostComments.tags",
-          "name": "Tagged Comments"
+          "id": "ghostThreads.tags",
+          "name": "Tagged Threads"
         }
       ]
     },
     "commands": [
       {
-        "command": "ghostComments.createNote",
+        "command": "ghostThreads.createNote",
         "title": "Create Note",
-        "category": "Ghost Comments"
+        "category": "Ghost Threads"
       },
       {
-        "command": "ghostComments.submitNote",
+        "command": "ghostThreads.submitNote",
         "title": "Save Note",
         "enablement": "!commentIsEmpty"
       },
       {
-        "command": "ghostComments.cancelNote",
+        "command": "ghostThreads.cancelNote",
         "title": "Cancel"
       },
       {
-        "command": "ghostComments.editNote",
+        "command": "ghostThreads.editNote",
         "title": "Edit Note",
         "icon": "$(edit)"
       },
       {
-        "command": "ghostComments.saveNote",
+        "command": "ghostThreads.saveNote",
         "title": "Save",
         "enablement": "!commentIsEmpty"
       },
       {
-        "command": "ghostComments.cancelEdit",
+        "command": "ghostThreads.cancelEdit",
         "title": "Cancel"
       },
       {
-        "command": "ghostComments.deleteNote",
+        "command": "ghostThreads.deleteNote",
         "title": "Delete Note",
         "icon": "$(trash)"
       },
       {
-        "command": "ghostComments.reattachNote",
+        "command": "ghostThreads.reattachNote",
         "title": "Reattach Note"
       },
       {
-        "command": "ghostComments.replyNote",
+        "command": "ghostThreads.replyNote",
         "title": "Reply",
         "enablement": "!commentIsEmpty"
       },
       {
-        "command": "ghostComments.attachHere",
+        "command": "ghostThreads.attachHere",
         "title": "Attach here",
-        "category": "Ghost Comments",
-        "enablement": "ghostComments.reattaching"
+        "category": "Ghost Threads",
+        "enablement": "ghostThreads.reattaching"
       },
       {
-        "command": "ghostComments.cancelReattach",
+        "command": "ghostThreads.cancelReattach",
         "title": "Cancel Reattachment",
-        "category": "Ghost Comments",
-        "enablement": "ghostComments.reattaching"
+        "category": "Ghost Threads",
+        "enablement": "ghostThreads.reattaching"
       },
       {
-        "command": "ghostComments.setTag",
+        "command": "ghostThreads.setTag",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": "$(tag)"
       },
       {
-        "command": "ghostComments.setTag.red",
+        "command": "ghostThreads.setTag.red",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/red.svg",
           "dark": "assets/tag-icons/red.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.orange",
+        "command": "ghostThreads.setTag.orange",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/orange.svg",
           "dark": "assets/tag-icons/orange.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.yellow",
+        "command": "ghostThreads.setTag.yellow",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/yellow.svg",
           "dark": "assets/tag-icons/yellow.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.green",
+        "command": "ghostThreads.setTag.green",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/green.svg",
           "dark": "assets/tag-icons/green.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.blue",
+        "command": "ghostThreads.setTag.blue",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/blue.svg",
           "dark": "assets/tag-icons/blue.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.purple",
+        "command": "ghostThreads.setTag.purple",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/purple.svg",
           "dark": "assets/tag-icons/purple.svg"
         }
       },
       {
-        "command": "ghostComments.setTag.gray",
+        "command": "ghostThreads.setTag.gray",
         "title": "Set Tag…",
-        "category": "Ghost Comments",
+        "category": "Ghost Threads",
         "icon": {
           "light": "assets/tag-icons/gray.svg",
           "dark": "assets/tag-icons/gray.svg"
         }
       },
       {
-        "command": "ghostComments.clearTag",
+        "command": "ghostThreads.clearTag",
         "title": "Mark as Untagged",
-        "category": "Ghost Comments"
+        "category": "Ghost Threads"
       },
       {
-        "command": "ghostComments.revealDiscussion",
-        "title": "Open Ghost Comment",
-        "category": "Ghost Comments"
+        "command": "ghostThreads.revealDiscussion",
+        "title": "Open Ghost Thread",
+        "category": "Ghost Threads"
       }
     ],
     "keybindings": [
       {
-        "command": "ghostComments.createNote",
+        "command": "ghostThreads.createNote",
         "key": "ctrl+alt+n",
         "mac": "cmd+alt+n",
         "when": "editorTextFocus && !editorReadonly"
@@ -209,186 +209,186 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "ghostComments.submitNote",
+          "command": "ghostThreads.submitNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.cancelNote",
+          "command": "ghostThreads.cancelNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.editNote",
+          "command": "ghostThreads.editNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.saveNote",
+          "command": "ghostThreads.saveNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.cancelEdit",
+          "command": "ghostThreads.cancelEdit",
           "when": "false"
         },
         {
-          "command": "ghostComments.deleteNote",
+          "command": "ghostThreads.deleteNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.replyNote",
+          "command": "ghostThreads.replyNote",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.red",
+          "command": "ghostThreads.setTag.red",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.orange",
+          "command": "ghostThreads.setTag.orange",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.yellow",
+          "command": "ghostThreads.setTag.yellow",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.green",
+          "command": "ghostThreads.setTag.green",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.blue",
+          "command": "ghostThreads.setTag.blue",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.purple",
+          "command": "ghostThreads.setTag.purple",
           "when": "false"
         },
         {
-          "command": "ghostComments.setTag.gray",
+          "command": "ghostThreads.setTag.gray",
           "when": "false"
         },
         {
-          "command": "ghostComments.revealDiscussion",
+          "command": "ghostThreads.revealDiscussion",
           "when": "false"
         }
       ],
       "comments/commentThread/context": [
         {
-          "command": "ghostComments.submitNote",
+          "command": "ghostThreads.submitNote",
           "group": "inline@1",
-          "when": "commentController == ghostComments && commentThreadIsEmpty"
+          "when": "commentController == ghostThreads && commentThreadIsEmpty"
         },
         {
-          "command": "ghostComments.cancelNote",
+          "command": "ghostThreads.cancelNote",
           "group": "inline@2",
-          "when": "commentController == ghostComments && commentThreadIsEmpty"
+          "when": "commentController == ghostThreads && commentThreadIsEmpty"
         },
         {
-          "command": "ghostComments.replyNote",
+          "command": "ghostThreads.replyNote",
           "group": "inline@2",
-          "when": "commentController == ghostComments && !commentThreadIsEmpty"
+          "when": "commentController == ghostThreads && !commentThreadIsEmpty"
         }
       ],
       "comments/commentThread/title": [
         {
-          "command": "ghostComments.reattachNote",
+          "command": "ghostThreads.reattachNote",
           "group": "navigation",
-          "when": "commentController == ghostComments && commentThread =~ /^stale-/"
+          "when": "commentController == ghostThreads && commentThread =~ /^stale-/"
         },
         {
-          "command": "ghostComments.setTag",
+          "command": "ghostThreads.setTag",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-untagged || commentThread == stale-untagged)"
+          "when": "commentController == ghostThreads && (commentThread == active-untagged || commentThread == stale-untagged)"
         },
         {
-          "command": "ghostComments.setTag.red",
+          "command": "ghostThreads.setTag.red",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-red || commentThread == stale-red)"
+          "when": "commentController == ghostThreads && (commentThread == active-red || commentThread == stale-red)"
         },
         {
-          "command": "ghostComments.setTag.orange",
+          "command": "ghostThreads.setTag.orange",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-orange || commentThread == stale-orange)"
+          "when": "commentController == ghostThreads && (commentThread == active-orange || commentThread == stale-orange)"
         },
         {
-          "command": "ghostComments.setTag.yellow",
+          "command": "ghostThreads.setTag.yellow",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-yellow || commentThread == stale-yellow)"
+          "when": "commentController == ghostThreads && (commentThread == active-yellow || commentThread == stale-yellow)"
         },
         {
-          "command": "ghostComments.setTag.green",
+          "command": "ghostThreads.setTag.green",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-green || commentThread == stale-green)"
+          "when": "commentController == ghostThreads && (commentThread == active-green || commentThread == stale-green)"
         },
         {
-          "command": "ghostComments.setTag.blue",
+          "command": "ghostThreads.setTag.blue",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-blue || commentThread == stale-blue)"
+          "when": "commentController == ghostThreads && (commentThread == active-blue || commentThread == stale-blue)"
         },
         {
-          "command": "ghostComments.setTag.purple",
+          "command": "ghostThreads.setTag.purple",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-purple || commentThread == stale-purple)"
+          "when": "commentController == ghostThreads && (commentThread == active-purple || commentThread == stale-purple)"
         },
         {
-          "command": "ghostComments.setTag.gray",
+          "command": "ghostThreads.setTag.gray",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && (commentThread == active-gray || commentThread == stale-gray)"
+          "when": "commentController == ghostThreads && (commentThread == active-gray || commentThread == stale-gray)"
         }
       ],
       "comments/comment/title": [
         {
-          "command": "ghostComments.editNote",
+          "command": "ghostThreads.editNote",
           "group": "navigation@1",
-          "when": "commentController == ghostComments && commentThread != draft"
+          "when": "commentController == ghostThreads && commentThread != draft"
         },
         {
-          "command": "ghostComments.deleteNote",
+          "command": "ghostThreads.deleteNote",
           "group": "navigation@2",
-          "when": "commentController == ghostComments && commentThread != draft"
+          "when": "commentController == ghostThreads && commentThread != draft"
         }
       ],
       "comments/comment/context": [
         {
-          "command": "ghostComments.cancelEdit",
+          "command": "ghostThreads.cancelEdit",
           "group": "inline@2",
-          "when": "commentController == ghostComments"
+          "when": "commentController == ghostThreads"
         },
         {
-          "command": "ghostComments.saveNote",
+          "command": "ghostThreads.saveNote",
           "group": "inline@1",
-          "when": "commentController == ghostComments"
+          "when": "commentController == ghostThreads"
         }
       ],
       "editor/context": [
         {
-          "command": "ghostComments.attachHere",
-          "when": "ghostComments.reattaching",
+          "command": "ghostThreads.attachHere",
+          "when": "ghostThreads.reattaching",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "ghostComments.setTag",
-          "when": "view == ghostComments.tags && viewItem == ghostComments.note",
+          "command": "ghostThreads.setTag",
+          "when": "view == ghostThreads.tags && viewItem == ghostThreads.note",
           "group": "inline@1"
         }
       ]
     },
     "configuration": {
-      "title": "Ghost Comments",
+      "title": "Ghost Threads",
       "properties": {
-        "ghostComments.authorName": {
+        "ghostThreads.authorName": {
           "type": "string",
           "default": "",
           "scope": "window",
           "description": "Display name stored with newly created notes."
         },
-        "ghostComments.backupInterval": {
+        "ghostThreads.backupInterval": {
           "type": "integer",
           "default": 10,
           "minimum": 0,
           "scope": "window",
           "description": "Number of saved comment changes between updates to .gc/comments-backup.json. The first saved change creates the backup; 0 disables automatic backups."
         },
-        "ghostComments.tags": {
+        "ghostThreads.tags": {
           "type": "array",
           "scope": "window",
           "default": [
@@ -413,7 +413,7 @@
               "color": "green"
             }
           ],
-          "description": "Ordered tag definitions used by Ghost Comments. Create tags from the tag picker; use settings.json to customize IDs, labels, colors, and order.",
+          "description": "Ordered tag definitions used by Ghost Threads. Create tags from the tag picker; use settings.json to customize IDs, labels, colors, and order.",
           "items": {
             "type": "object",
             "required": [

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Ghost Comments (Sandbox)",
+      "name": "Run Ghost Threads (Sandbox)",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",

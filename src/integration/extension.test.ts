@@ -10,7 +10,7 @@ import { TagTreeProvider } from "../tags/tagTree";
 import { tagPickerIcon } from "../tags/tagConfiguration";
 import { TAG_COLORS } from "../tags/tagDefinitions";
 
-suite("Ghost Comments", () => {
+suite("Ghost Threads", () => {
   const folder = vscode.workspace.workspaceFolders![0]!;
 
   class MemoryBackupState implements BackupState {
@@ -48,11 +48,15 @@ suite("Ghost Comments", () => {
   teardown(cleanStorage);
 
   test("provides colored tag icons for the picker", async () => {
-    const extension = vscode.extensions.getExtension("LuzzuStudios.ghost-comments");
+    const extension = vscode.extensions.getExtension(
+      "LuzzuStudios.ghost-threads",
+    );
     assert.ok(extension);
     for (const color of TAG_COLORS) {
       const svg = new TextDecoder().decode(
-        await vscode.workspace.fs.readFile(tagPickerIcon(extension.extensionUri, color)),
+        await vscode.workspace.fs.readFile(
+          tagPickerIcon(extension.extensionUri, color),
+        ),
       );
       assert.match(svg, /<svg\b/);
       assert.match(svg, /stroke="#[0-9a-f]{6}"/);
@@ -60,10 +64,12 @@ suite("Ghost Comments", () => {
   });
 
   test("creates tags from new notes and existing discussions", async () => {
-    const configuration = vscode.workspace.getConfiguration("ghostComments");
+    const configuration = vscode.workspace.getConfiguration("ghostThreads");
     const previous = configuration.inspect("tags")?.workspaceValue;
     const controller = new NoteController(undefined, undefined, false);
-    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, "sample.ts"),
+    );
     const editor = await vscode.window.showTextDocument(document);
     controller["authorName"] = async () => "Tag Author";
     controller["showTagPicker"] = async () => ({ kind: "create" });
@@ -74,12 +80,19 @@ suite("Ghost Comments", () => {
       controller["promptTagName"] = async () => "Review";
       controller["createNote"]();
       const draft = [...controller["drafts"]][0]!;
-      await controller["submitNote"]({ thread: draft, text: "Created with a tag" });
+      await controller["submitNote"]({
+        thread: draft,
+        text: "Created with a tag",
+      });
       const binding = [...controller["bindings"].values()][0]!;
       assert.equal(binding.store.all[0]!.tag, "review");
       assert.equal(binding.thread.label, "Discussion · Review");
       assert.equal(binding.thread.contextValue, "active-purple");
-      const tree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
+      const tree = new TagTreeProvider(
+        controller,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-threads")!
+          .extensionUri,
+      );
       try {
         assert.equal(tree.getTreeItem(tree.getChildren()[0]!).label, "Review");
       } finally {
@@ -89,7 +102,8 @@ suite("Ghost Comments", () => {
       await controller["setTag"](binding.thread);
       assert.equal(binding.store.all[0]!.tag, "review-again");
       assert.equal(binding.thread.label, "Discussion · Review Again");
-      const tags = vscode.workspace.getConfiguration("ghostComments")
+      const tags = vscode.workspace
+        .getConfiguration("ghostThreads")
         .get<{ id: string; label: string; color: string }[]>("tags")!;
       assert.deepEqual(tags.slice(-2), [
         { id: "review", label: "Review", color: "purple" },
@@ -97,13 +111,19 @@ suite("Ghost Comments", () => {
       ]);
     } finally {
       controller.dispose();
-      await configuration.update("tags", previous, vscode.ConfigurationTarget.Workspace);
+      await configuration.update(
+        "tags",
+        previous,
+        vscode.ConfigurationTarget.Workspace,
+      );
     }
   });
 
   test("keeps drafts and existing tags when creation is cancelled or fails", async () => {
     const controller = new NoteController(undefined, undefined, false);
-    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, "sample.ts"),
+    );
     const editor = await vscode.window.showTextDocument(document);
     controller["authorName"] = async () => "Tag Author";
     try {
@@ -112,9 +132,15 @@ suite("Ghost Comments", () => {
       controller["createNote"]();
       const draft = [...controller["drafts"]][0]!;
       controller["showTagPicker"] = async () => undefined;
-      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      await controller["submitNote"]({
+        thread: draft,
+        text: "Keep this draft",
+      });
       assert.equal(controller["drafts"].has(draft), true);
-      assert.equal((draft.comments[0] as NoteComment).savedBody, "Keep this draft");
+      assert.equal(
+        (draft.comments[0] as NoteComment).savedBody,
+        "Keep this draft",
+      );
       assert.equal([...controller["stores"].values()][0]!.all.length, 0);
       let selections = 0;
       controller["showTagPicker"] = async () =>
@@ -130,16 +156,27 @@ suite("Ghost Comments", () => {
       selections = 0;
       controller["promptTagName"] = async () => "Cannot Save";
       controller["pickTagColor"] = async () => "red";
-      controller["saveTagDefinition"] = async () => { throw new Error("test settings failure"); };
+      controller["saveTagDefinition"] = async () => {
+        throw new Error("test settings failure");
+      };
       controller["showTagPicker"] = async () =>
         ++selections === 1 ? { kind: "create" } : undefined;
-      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      await controller["submitNote"]({
+        thread: draft,
+        text: "Keep this draft",
+      });
       assert.equal(controller["drafts"].has(draft), true);
-      assert.equal((draft.comments[0] as NoteComment).savedBody, "Keep this draft");
+      assert.equal(
+        (draft.comments[0] as NoteComment).savedBody,
+        "Keep this draft",
+      );
       assert.equal([...controller["stores"].values()][0]!.all.length, 0);
       assert.equal(selections, 2);
       controller["showTagPicker"] = async () => ({ kind: "tag", tagId: null });
-      await controller["submitNote"]({ thread: draft, text: "Keep this draft" });
+      await controller["submitNote"]({
+        thread: draft,
+        text: "Keep this draft",
+      });
       const binding = [...controller["bindings"].values()][0]!;
       const before = binding.store.all[0]!;
       selections = 0;
@@ -155,7 +192,9 @@ suite("Ghost Comments", () => {
   });
 
   test("submits and cancels drafts without modifying source code", async () => {
-    const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, "sample.ts"));
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, "sample.ts"),
+    );
     const editor = await vscode.window.showTextDocument(document);
     const original = document.getText();
     const controller = new NoteController(undefined, undefined, false);
@@ -168,7 +207,10 @@ suite("Ghost Comments", () => {
       const draft = [...controller["drafts"]][0]!;
       const comment = draft.comments[0] as NoteComment;
       assert.equal(comment.mode, vscode.CommentMode.Editing);
-      await controller["submitNote"]({ thread: draft, text: "Typed into the note" });
+      await controller["submitNote"]({
+        thread: draft,
+        text: "Typed into the note",
+      });
       assert.equal(document.getText(), original);
       assert.equal(controller["drafts"].size, 0);
       const store = [...controller["stores"].values()][0]!;
@@ -183,7 +225,14 @@ suite("Ghost Comments", () => {
       controller.dispose();
       if (document.getText() !== original) {
         const restore = new vscode.WorkspaceEdit();
-        restore.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), original);
+        restore.replace(
+          document.uri,
+          new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length),
+          ),
+          original,
+        );
         await vscode.workspace.applyEdit(restore);
       }
     }
@@ -292,17 +341,20 @@ suite("Ghost Comments", () => {
 
       const tree = new TagTreeProvider(
         controller,
-        vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-threads")!
+          .extensionUri,
       );
       try {
         const tagNode = tree.getChildren()[0]!;
         const fileNode = tree.getChildren(tagNode)[0]!;
         const noteNode = tree.getChildren(fileNode)[0]!;
-        const noteTooltip = tree.getTreeItem(noteNode).tooltip as vscode.MarkdownString;
+        const noteTooltip = tree.getTreeItem(noteNode)
+          .tooltip as vscode.MarkdownString;
         assert.equal(noteTooltip.isTrusted, false);
         assert.equal(noteTooltip.supportHtml, false);
         const replyNode = tree.getChildren(noteNode)[0]!;
-        const replyTooltip = tree.getTreeItem(replyNode).tooltip as vscode.MarkdownString;
+        const replyTooltip = tree.getTreeItem(replyNode)
+          .tooltip as vscode.MarkdownString;
         assert.equal(replyTooltip.isTrusted, false);
         assert.equal(replyTooltip.supportHtml, false);
       } finally {
@@ -351,20 +403,32 @@ suite("Ghost Comments", () => {
       );
       controller["createNote"]();
       const draft = [...controller["drafts"]][0]!;
-      assert.equal(draft.label, "Add a Ghost Comment");
+      assert.equal(draft.label, "Add a Ghost Thread");
       await controller["submitNote"]({ thread: draft, text: "Initial note" });
       const binding = () => [...controller["bindings"].values()][0]!;
       assert.equal(binding().store.all[0]!.tag, "todo");
       assert.equal(binding().thread.label, "Discussion · To Do");
       assert.equal(binding().thread.contextValue, "active-orange");
-      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
-      const tagTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
+      assert.equal(
+        (binding().thread.comments[0] as NoteComment).label,
+        undefined,
+      );
+      const tagTree = new TagTreeProvider(
+        controller,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-threads")!
+          .extensionUri,
+      );
       try {
         const tagNodes = tagTree.getChildren();
         assert.equal(tagNodes.length, 1);
         const tagItem = tagTree.getTreeItem(tagNodes[0]!);
         assert.equal(tagItem.label, "To Do");
-        assert.equal((tagItem.iconPath as vscode.Uri).path.endsWith("/assets/tag-icons/orange.svg"), true);
+        assert.equal(
+          (tagItem.iconPath as vscode.Uri).path.endsWith(
+            "/assets/tag-icons/orange.svg",
+          ),
+          true,
+        );
         const fileNodes = tagTree.getChildren(tagNodes[0]!);
         assert.equal(fileNodes.length, 1);
         assert.equal(tagTree.getTreeItem(fileNodes[0]!).label, "sample.ts");
@@ -379,7 +443,11 @@ suite("Ghost Comments", () => {
       const storageBeforeUnchangedSave = new TextDecoder().decode(
         await vscode.workspace.fs.readFile(binding().store.storageUri),
       );
-      const storageTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
+      const storageTemporary = vscode.Uri.joinPath(
+        folder.uri,
+        ".gc",
+        "comments.json.tmp",
+      );
       await vscode.workspace.fs.createDirectory(storageTemporary);
       try {
         await controller["refreshAnchors"](document);
@@ -399,13 +467,19 @@ suite("Ghost Comments", () => {
       assert.equal(binding().store.all[0]!.tag, "question");
       assert.equal(binding().thread.label, "Discussion · Question");
       assert.equal(binding().thread.contextValue, "active-blue");
-      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
+      assert.equal(
+        (binding().thread.comments[0] as NoteComment).label,
+        undefined,
+      );
       assert.notEqual(binding().store.all[0]!.updatedAt, originalUpdatedAt);
       await controller["clearTag"](binding().thread);
       assert.equal(binding().store.all[0]!.tag, undefined);
       assert.equal(binding().thread.label, "Discussion");
       assert.equal(binding().thread.contextValue, "active-untagged");
-      assert.equal((binding().thread.comments[0] as NoteComment).label, undefined);
+      assert.equal(
+        (binding().thread.comments[0] as NoteComment).label,
+        undefined,
+      );
       originalUpdatedAt = binding().store.all[0]!.updatedAt;
       await controller["replyNote"]({
         thread: binding().thread,
@@ -424,22 +498,35 @@ suite("Ghost Comments", () => {
       assert.equal(binding().store.all[0]!.body, "Initial note");
       assert.equal(binding().store.all[0]!.replies![0]!.body, "Edited reply");
       let firstReplyTreeId: string | undefined;
-      const repliesTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
+      const repliesTree = new TagTreeProvider(
+        controller,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-threads")!
+          .extensionUri,
+      );
       try {
         const tagNode = repliesTree.getChildren()[0]!;
         const fileNode = repliesTree.getChildren(tagNode)[0]!;
         const noteNode = repliesTree.getChildren(fileNode)[0]!;
         const noteItem = repliesTree.getTreeItem(noteNode);
-        assert.equal(noteItem.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
+        assert.equal(
+          noteItem.collapsibleState,
+          vscode.TreeItemCollapsibleState.Collapsed,
+        );
         const replyNodes = repliesTree.getChildren(noteNode);
         assert.equal(replyNodes.length, 1);
         const replyItem = repliesTree.getTreeItem(replyNodes[0]!);
         firstReplyTreeId = replyItem.id;
         assert.equal(replyItem.label, "Edited reply");
         assert.equal(replyItem.description, "Integration Author");
-        assert.equal((replyItem.tooltip as vscode.MarkdownString).value, "Edited reply");
+        assert.equal(
+          (replyItem.tooltip as vscode.MarkdownString).value,
+          "Edited reply",
+        );
         await controller.revealDiscussion(replyItem.command!.arguments![0]);
-        assert.equal(binding().thread.collapsibleState, vscode.CommentThreadCollapsibleState.Expanded);
+        assert.equal(
+          binding().thread.collapsibleState,
+          vscode.CommentThreadCollapsibleState.Expanded,
+        );
       } finally {
         repliesTree.dispose();
       }
@@ -485,28 +572,50 @@ suite("Ghost Comments", () => {
       assert.equal(binding().thread.comments.length, 3);
       const detachedReply = binding().thread.comments[2] as NoteComment;
       assert.equal(detachedReply.parent, binding().thread);
-      assert.equal(detachedReply.body.value, "Reply while detached\nMore detail");
-      assert.equal(binding().store.all[0]!.replies![1]!.body, "Reply while detached\nMore detail");
-      const updatedTree = new TagTreeProvider(controller, vscode.extensions.getExtension("LuzzuStudios.ghost-comments")!.extensionUri);
+      assert.equal(
+        detachedReply.body.value,
+        "Reply while detached\nMore detail",
+      );
+      assert.equal(
+        binding().store.all[0]!.replies![1]!.body,
+        "Reply while detached\nMore detail",
+      );
+      const updatedTree = new TagTreeProvider(
+        controller,
+        vscode.extensions.getExtension("LuzzuStudios.ghost-threads")!
+          .extensionUri,
+      );
       try {
         const tagNode = updatedTree.getChildren()[0]!;
         const fileNode = updatedTree.getChildren(tagNode)[0]!;
         const noteNode = updatedTree.getChildren(fileNode)[0]!;
         const replyNodes = updatedTree.getChildren(noteNode);
-        assert.deepEqual(replyNodes.map((node) => updatedTree.getTreeItem(node).label), [
-          "Edited reply",
-          "Reply while detached",
-        ]);
-        assert.equal(updatedTree.getTreeItem(replyNodes[0]!).id, firstReplyTreeId);
+        assert.deepEqual(
+          replyNodes.map((node) => updatedTree.getTreeItem(node).label),
+          ["Edited reply", "Reply while detached"],
+        );
         assert.equal(
-          (updatedTree.getTreeItem(replyNodes[1]!).tooltip as vscode.MarkdownString).value,
+          updatedTree.getTreeItem(replyNodes[0]!).id,
+          firstReplyTreeId,
+        );
+        assert.equal(
+          (
+            updatedTree.getTreeItem(replyNodes[1]!)
+              .tooltip as vscode.MarkdownString
+          ).value,
           "Reply while detached\nMore detail",
         );
       } finally {
         updatedTree.dispose();
       }
-      await controller.revealDiscussion({ workspaceUri: folder.uri.toString(), noteId: detachedNoteId });
-      assert.equal(binding().thread.collapsibleState, vscode.CommentThreadCollapsibleState.Expanded);
+      await controller.revealDiscussion({
+        workspaceUri: folder.uri.toString(),
+        noteId: detachedNoteId,
+      });
+      assert.equal(
+        binding().thread.collapsibleState,
+        vscode.CommentThreadCollapsibleState.Expanded,
+      );
       const originalReplies = binding().store.all[0]!.replies;
       assert.equal(binding().store.all[0]!.status, "stale");
       attachmentPrompts[0]!("Cancel");
@@ -664,33 +773,40 @@ suite("Ghost Comments", () => {
 
   test("activates and registers its public command", async () => {
     const extension = vscode.extensions.getExtension(
-      "LuzzuStudios.ghost-comments",
+      "LuzzuStudios.ghost-threads",
     );
     assert.ok(extension);
     await extension.activate();
     const commands = await vscode.commands.getCommands(true);
-    assert.ok(commands.includes("ghostComments.createNote"));
-    assert.ok(commands.includes("ghostComments.setTag"));
+    assert.ok(commands.includes("ghostThreads.createNote"));
+    assert.ok(commands.includes("ghostThreads.setTag"));
     for (const color of TAG_COLORS) {
-      assert.ok(commands.includes(`ghostComments.setTag.${color}`));
+      assert.ok(commands.includes(`ghostThreads.setTag.${color}`));
     }
-    assert.ok(commands.includes("ghostComments.clearTag"));
-    assert.ok(commands.includes("ghostComments.revealDiscussion"));
+    assert.ok(commands.includes("ghostThreads.clearTag"));
+    assert.ok(commands.includes("ghostThreads.revealDiscussion"));
     const document = await vscode.workspace.openTextDocument(
       vscode.Uri.joinPath(folder.uri, "sample.ts"),
     );
     await vscode.window.showTextDocument(document);
-    await vscode.commands.executeCommand("ghostComments.createNote");
+    await vscode.commands.executeCommand("ghostThreads.createNote");
   });
 
   test("migrates legacy notes storage to comments storage", async () => {
     const store = new NoteStore(folder);
     const legacyUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes.json");
-    const legacyBackupUri = vscode.Uri.joinPath(folder.uri, ".gc", "notes-backup.json");
+    const legacyBackupUri = vscode.Uri.joinPath(
+      folder.uri,
+      ".gc",
+      "notes-backup.json",
+    );
     const note: StoredNote = {
       id: "legacy-note",
       filePath: "sample.ts",
-      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 6 } },
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 6 },
+      },
       anchor: { text: "export", before: [], after: [] },
       body: "Migrated comment",
       author: "Migration Test",
@@ -699,29 +815,45 @@ suite("Ghost Comments", () => {
       status: "active",
     };
     try {
-      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(folder.uri, ".gc"));
+      await vscode.workspace.fs.createDirectory(
+        vscode.Uri.joinPath(folder.uri, ".gc"),
+      );
       await vscode.workspace.fs.writeFile(
         legacyUri,
-        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+        new TextEncoder().encode(
+          JSON.stringify({ schemaVersion: 1, notes: [note] }),
+        ),
       );
       await vscode.workspace.fs.writeFile(
         legacyBackupUri,
-        new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, notes: [note] })),
+        new TextEncoder().encode(
+          JSON.stringify({ schemaVersion: 1, notes: [note] }),
+        ),
       );
 
       await store.load();
 
       assert.deepEqual(store.all, [note]);
       assert.deepEqual(
-        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.storageUri))).notes,
+        parseNoteFile(
+          new TextDecoder().decode(
+            await vscode.workspace.fs.readFile(store.storageUri),
+          ),
+        ).notes,
         [note],
       );
       assert.deepEqual(
-        parseNoteFile(new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri))).notes,
+        parseNoteFile(
+          new TextDecoder().decode(
+            await vscode.workspace.fs.readFile(store.backupUri),
+          ),
+        ).notes,
         [note],
       );
       await assert.rejects(async () => vscode.workspace.fs.stat(legacyUri));
-      await assert.rejects(async () => vscode.workspace.fs.stat(legacyBackupUri));
+      await assert.rejects(async () =>
+        vscode.workspace.fs.stat(legacyBackupUri),
+      );
     } finally {
       store.dispose();
     }
@@ -773,14 +905,18 @@ suite("Ghost Comments", () => {
       await assert.rejects(() => store.load());
       assert.deepEqual(store.all, [note]);
       assert.equal(
-        new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri)),
+        new TextDecoder().decode(
+          await vscode.workspace.fs.readFile(store.backupUri),
+        ),
         originalBackup,
       );
       await vscode.workspace.fs.delete(store.storageUri);
       await store.load();
       assert.deepEqual(store.all, []);
       assert.equal(
-        new TextDecoder().decode(await vscode.workspace.fs.readFile(store.backupUri)),
+        new TextDecoder().decode(
+          await vscode.workspace.fs.readFile(store.backupUri),
+        ),
         originalBackup,
       );
     } finally {
@@ -824,10 +960,7 @@ suite("Ghost Comments", () => {
         },
         body: "Second note",
       };
-      await store.upsertMany([
-        { ...note, body: "Second version" },
-        secondNote,
-      ]);
+      await store.upsertMany([{ ...note, body: "Second version" }, secondNote]);
       assert.equal(await read(store.backupUri), firstBackup);
 
       // Recreating the store simulates a VS Code restart. The shared state keeps
@@ -847,23 +980,43 @@ suite("Ghost Comments", () => {
       assert.equal(await read(store.backupUri), pausedBackup);
       interval = 1;
       await store.upsert({ ...store.all[0]!, body: "Resumed version" });
-      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Resumed version");
+      assert.equal(
+        parseNoteFile(await read(store.backupUri)).notes[0]!.body,
+        "Resumed version",
+      );
 
       // A failed backup leaves the primary save in place and remains due for retry.
-      const backupTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments-backup.json.tmp");
+      const backupTemporary = vscode.Uri.joinPath(
+        folder.uri,
+        ".gc",
+        "comments-backup.json.tmp",
+      );
       await vscode.workspace.fs.createDirectory(backupTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Backup initially fails" }),
       );
-      assert.equal(parseNoteFile(await read(store.storageUri)).notes[0]!.body, "Backup initially fails");
-      assert.notEqual(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Backup initially fails");
+      assert.equal(
+        parseNoteFile(await read(store.storageUri)).notes[0]!.body,
+        "Backup initially fails",
+      );
+      assert.notEqual(
+        parseNoteFile(await read(store.backupUri)).notes[0]!.body,
+        "Backup initially fails",
+      );
       await vscode.workspace.fs.delete(backupTemporary, { recursive: true });
       await store.upsert({ ...store.all[0]!, body: "Backup retry succeeds" });
-      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Backup retry succeeds");
+      assert.equal(
+        parseNoteFile(await read(store.backupUri)).notes[0]!.body,
+        "Backup retry succeeds",
+      );
 
       // A primary-write failure restores the in-memory and on-disk states.
       const primaryBeforeFailure = await read(store.storageUri);
-      const primaryTemporary = vscode.Uri.joinPath(folder.uri, ".gc", "comments.json.tmp");
+      const primaryTemporary = vscode.Uri.joinPath(
+        folder.uri,
+        ".gc",
+        "comments.json.tmp",
+      );
       await vscode.workspace.fs.createDirectory(primaryTemporary);
       await assert.rejects(() =>
         store.upsert({ ...store.all[0]!, body: "Primary write fails" }),
@@ -875,7 +1028,10 @@ suite("Ghost Comments", () => {
       // Removing a backup recreates it on the next enabled change.
       await vscode.workspace.fs.delete(store.backupUri);
       await store.upsert({ ...store.all[0]!, body: "Replacement backup" });
-      assert.equal(parseNoteFile(await read(store.backupUri)).notes[0]!.body, "Replacement backup");
+      assert.equal(
+        parseNoteFile(await read(store.backupUri)).notes[0]!.body,
+        "Replacement backup",
+      );
     } finally {
       store.dispose();
     }

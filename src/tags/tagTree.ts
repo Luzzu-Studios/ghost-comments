@@ -64,7 +64,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
       item.id = JSON.stringify(["tag", element.tag.id]);
       item.description = String(element.discussions.length);
       item.iconPath = tagPickerIcon(this.extensionUri, element.tag.color);
-      item.contextValue = "ghostComments.tag";
+      item.contextValue = "ghostThreads.tag";
       return item;
     }
     if (element.kind === "file") {
@@ -76,7 +76,7 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
       item.id = JSON.stringify(["file", element.tag.id, first.workspaceUri, first.note.filePath]);
       item.description = String(element.discussions.length);
       item.iconPath = new vscode.ThemeIcon("file");
-      item.contextValue = "ghostComments.file";
+      item.contextValue = "ghostThreads.file";
       return item;
     }
     if (element.kind === "reply") {
@@ -85,10 +85,10 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
       item.description = element.reply.author;
       item.tooltip = safeMarkdown(element.reply.body);
       item.iconPath = new vscode.ThemeIcon("comment");
-      item.contextValue = "ghostComments.reply";
+      item.contextValue = "ghostThreads.reply";
       item.command = {
-        command: "ghostComments.revealDiscussion",
-        title: "Open Ghost Comment",
+        command: "ghostThreads.revealDiscussion",
+        title: "Open Ghost Thread",
         arguments: [{ workspaceUri: element.workspaceUri, noteId: element.noteId }],
       };
       return item;
@@ -108,10 +108,10 @@ export class TagTreeProvider implements vscode.TreeDataProvider<TagTreeNode>, vs
     item.iconPath = new vscode.ThemeIcon(
       note.status === "stale" ? "warning" : "comment-discussion",
     );
-    item.contextValue = "ghostComments.note";
+    item.contextValue = "ghostThreads.note";
     item.command = {
-      command: "ghostComments.revealDiscussion",
-      title: "Open Ghost Comment",
+      command: "ghostThreads.revealDiscussion",
+      title: "Open Ghost Thread",
       arguments: [{ workspaceUri: element.workspaceUri, noteId: element.noteId }],
     };
     return item;
